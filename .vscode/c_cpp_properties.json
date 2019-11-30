@@ -1,0 +1,20 @@
+{
+  "configurations": [
+    {
+      "name": "Linux",
+      "includePath": [
+        "${workspaceFolder}/autobahn/src",
+        "/usr/include/openvpn",
+        "/usr/src/googletest/googletest/include",
+        "${workspaceFolder}/",
+        "${workspaceFolder}/third_party/boost_1_68_0"
+      ],
+      "defines": [],
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "c11",
+      "cppStandard": "c++17",
+      "intelliSenseMode": "clang-x64"
+    }
+  ],
+  "version": 4
+}
