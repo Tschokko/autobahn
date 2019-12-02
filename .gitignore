@@ -5,6 +5,7 @@
 /bazel-testlogs
 /bazel-template
 /bazel-autobahn-plugin
+/bazel-autobahn
 third_party/
 bin/
 build/

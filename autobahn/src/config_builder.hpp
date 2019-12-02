@@ -1,8 +1,8 @@
 // Copyright (c) 2019 by tschokko.de.
 // Author: Tschokko
 
-#ifndef CONFIG_HPP_
-#define CONFIG_HPP_
+#ifndef AUTOBAHN_SRC_CONFIG_BUILDER_HPP_
+#define AUTOBAHN_SRC_CONFIG_BUILDER_HPP_
 
 #include <map>
 #include <sstream>
@@ -145,4 +145,4 @@ class ConfigBuilder {
 
 }  // namespace autobahn::openvpn
 
-#endif  // CONFIG_HPP_
+#endif  // AUTOBAHN_SRC_CONFIG_BUILDER_HPP_

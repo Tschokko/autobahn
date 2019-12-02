@@ -1,3 +1,6 @@
+// Copyright (c) 2019 by tschokko.de.
+// Author: Tschokko
+
 #include "autobahn/src/config_builder.hpp"
 #include "boost/asio/ip/address_v4.hpp"
 #include "boost/asio/ip/network_v4.hpp"

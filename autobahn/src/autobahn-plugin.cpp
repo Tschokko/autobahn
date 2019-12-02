@@ -1,13 +1,20 @@
+// Copyright (c) 2019 by tschokko.de.
+// Author: Tschokko
+
 #include <iostream>
 
 #include "boost/asio/ip/network_v4.hpp"
 #include "boost/asio/ip/network_v6.hpp"
+#include "msgpack.hpp"
+#include "zmq.hpp"
+#include "zmq_addon.hpp"
 
 #include "config_builder.hpp"
+#include "message.hpp"
 
+namespace autobahn {
 int main() {
   using namespace autobahn;
-  using namespace boost::asio;
   using namespace boost::asio;
 
   openvpn::ConfigBuilder config;
@@ -45,5 +52,34 @@ int main() {
   for (auto const& arg : config.BuildArgs()) std::cout << arg << " ";
   std::cout << std::endl;
 
+  zmq::context_t ctx(1);
+  zmq::socket_t sock(ctx, zmq::socket_type::req);
+  sock.connect("ipc:///tmp/autobahn-1");
+
+  // Request
+  auto req = message::MakeRequestClientConnect("client1");
+  auto req_data = message::MsgPackEncoding::EncodeToString(req);
+
+  // Messaging
+  zmq::multipart_t multipart;
+  multipart.addstr("autobahn.openvpn.client-connect");
+  multipart.addstr(req_data);
+  multipart.send(sock);
+
+  // Response
+  zmq::multipart_t recv_msg;
+  auto ok = recv_msg.recv(sock);
+  if (ok) {
+    auto rep_data = recv_msg.popstr();
+    auto rep =
+        message::MsgPackEncoding::DecodeString<message::ReplyClientConnect>(
+            rep_data);
+    std::cout << "data = [" << rep.authorized() << "] [" << rep.config() << "]"
+              << std::endl;
+  }
+
   return 0;
 }
+}  // namespace autobahn
+
+int main() { return autobahn::main(); }

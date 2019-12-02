@@ -1,3 +1,6 @@
+// Copyright (c) 2019 by tschokko.de.
+// Author: Tschokko
+
 #include "gtest/gtest.h"
 
 int main(int argc, char **argv) {
