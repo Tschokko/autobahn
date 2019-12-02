@@ -15,6 +15,9 @@ cmake_external(
 
 cmake_external(
     name = "cppzmq",
+    cache_entries = {
+        "CPPZMQ_BUILD_TESTS": "OFF",
+    },
     env_vars = {
         "ZeroMQ_DIR": "$EXT_BUILD_DEPS/libzmq",
     },
@@ -62,7 +65,7 @@ cc_binary(
     includes = [":autobahn/include"],
     deps = [
         "//autobahn",
-        "@boost//:asio",
+        # "@boost//:asio",
     ],
 )
 
@@ -71,7 +74,7 @@ cc_binary(
     srcs = ["src/autobahn-server.cpp"],
     deps = [
         "//autobahn",
-        "@boost//:asio",
+        # "@boost//:asio",
     ],
 )
 

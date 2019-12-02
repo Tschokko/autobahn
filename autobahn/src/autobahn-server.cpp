@@ -15,6 +15,8 @@ int main() {
   zmq::socket_t sock(ctx, zmq::socket_type::rep);
   sock.bind("ipc:///tmp/autobahn-1");
 
+  std::cout << "Start listening..." << std::endl;
+
   while (true) {
     zmq::multipart_t multipart;
 

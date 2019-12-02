@@ -48,9 +48,9 @@ int main() {
       "SHA256:TLS-ECDHE-RSA-WITH-AES-256-GCM-SHA384:TLS-DHE-RSA-WITH-AES-256-"
       "CBC-SHA256");
 
-  std::cout << "openvpn ";
-  for (auto const& arg : config.BuildArgs()) std::cout << arg << " ";
-  std::cout << std::endl;
+  // std::cout << "openvpn ";
+  // for (auto const& arg : config.BuildArgs()) std::cout << arg << " ";
+  // std::cout << std::endl;
 
   zmq::context_t ctx(1);
   zmq::socket_t sock(ctx, zmq::socket_type::req);
