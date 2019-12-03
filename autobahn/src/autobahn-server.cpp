@@ -5,13 +5,38 @@
 #include <iostream>
 #include <thread>
 
+#include "boost/asio.hpp"
 #include "message.hpp"
 #include "msgpack.hpp"
 #include "zmq.hpp"
 #include "zmq_addon.hpp"
 
 int main() {
-  zmq::context_t ctx(1);
+  boost::asio::io_service io_service;
+  boost::asio::local::stream_protocol::endpoint ep("/tmp/autobahn.sock");
+  boost::asio::local::stream_protocol::acceptor acceptor(io_service, ep);
+  boost::asio::local::stream_protocol::socket socket(io_service);
+
+  acceptor.accept(socket);
+
+  for (;;) {
+    boost::asio::streambuf buffer;
+    boost::system::error_code ec;
+    if (0 == boost::asio::read(socket, buffer,
+                               boost::asio::transfer_at_least(1), ec))
+      break;
+
+    if (ec && ec != boost::asio::error::eof) {
+      std::cerr << "error: " << ec.message() << std::endl;
+    } else {
+      std::string data(boost::asio::buffer_cast<const char*>(buffer.data()));
+      std::cout << "message: " << data << std::endl;
+      if (data == "quit") break;
+    }
+  }
+
+  std::cout << "Fine!" << std::endl;
+  /*zmq::context_t ctx(1);
   zmq::socket_t sock(ctx, zmq::socket_type::rep);
   sock.bind("ipc:///tmp/autobahn-1");
 
@@ -39,7 +64,7 @@ int main() {
       zmq::multipart_t reply_msg(rep_data);
       reply_msg.send(sock);
     }
-  }
+  }*/
 
   return 0;
 }

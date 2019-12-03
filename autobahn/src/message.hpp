@@ -95,4 +95,55 @@ class MsgPackEncoding {
 
 }  // namespace autobahn::message
 
+namespace autobahn {
+
+enum class MessageType : int { kRequest = 1, kReply = 2 };
+
+template <class T>
+class Message {
+ public:
+  Message(MessageType const& message_type, std::string const& subject,
+          T const& data)
+      : message_type_(message_type), subject_(subject), data_(data) {}
+
+  Message(const Message& other) = delete;
+  Message(Message&& other) {
+    message_type_ = other.message_type_;
+    subject_ = other.subject_;
+    reply_ = other.reply_;
+    data_ = std::move(other.data_);
+  }
+
+  Message& operator=(const Message& other) = delete;
+  Message& operator=(Message&& other) {
+    if (this == &other) {
+      return *this;
+    }
+
+    message_type_ = other.message_type_;
+    subject_ = other.subject_;
+    reply_ = other.reply_;
+    data_ = std::move(other.data_);
+
+    return *this;
+  }
+
+  std::string subject() const { return subject_; }
+  T data() const { return data_; }
+
+ private:
+  MessageType message_type_;
+  std::string subject_;
+  std::string reply_;
+  T data_;
+};
+
+template <class T>
+Message<T> MakeMessage(MessageType const& message_type,
+                       std::string const& subject, T const& data) {
+  return Message<T>(message_type, subject, data);
+}
+
+}  // namespace autobahn
+
 #endif  // AUTOBAHN_SRC_MESSAGE_HPP_
