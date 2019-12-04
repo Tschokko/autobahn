@@ -12,16 +12,26 @@
 
 namespace autobahn::message {
 
-class RequestClientConnect {
+class WithRequestID {
  public:
-  explicit RequestClientConnect(std::string const& common_name)
-      : common_name_(common_name) {}
+  explicit WithRequestID(int request_id) : request_id_(request_id) {}
+  int request_id() const { return request_id_; }
+
+ protected:
+  int request_id_;
+};
+
+class RequestClientConnect : public WithRequestID {
+ public:
+  explicit RequestClientConnect(uint request_id, std::string const& common_name)
+      : WithRequestID(request_id), common_name_(common_name) {}
 
   std::string common_name() const { return common_name_; }
 
   static std::string MarshalMsgPack(RequestClientConnect const& v) {
     std::stringstream ss;
-    msgpack::pack(ss, v.common_name_);
+    std::tuple<int, std::string> data(v.request_id_, v.common_name_);
+    msgpack::pack(ss, data);
     return ss.str();
   }
 
@@ -29,31 +39,36 @@ class RequestClientConnect {
     RequestClientConnect r;
     auto oh = msgpack::unpack(str.data(), str.size());
     auto obj = oh.get();
-    r.common_name_ = obj.as<std::string>();
+    auto data = obj.as<std::tuple<int, std::string>>();
+    r.request_id_ = std::get<0>(data);
+    r.common_name_ = std::get<1>(data);
     return r;
   }
 
  private:
-  RequestClientConnect() {}
-
   std::string common_name_;
+
+  RequestClientConnect() : WithRequestID(0) {}
 };
 
-RequestClientConnect MakeRequestClientConnect(std::string const& common_name) {
-  return RequestClientConnect(common_name);
+RequestClientConnect MakeRequestClientConnect(uint request_id,
+                                              std::string const& common_name) {
+  return RequestClientConnect(request_id, common_name);
 }
 
-class ReplyClientConnect {
+class ReplyClientConnect : public WithRequestID {
  public:
-  ReplyClientConnect(bool authorized, std::string const& config)
-      : authorized_(authorized), config_(config) {}
+  ReplyClientConnect(uint request_id, bool authorized,
+                     std::string const& config)
+      : WithRequestID(request_id), authorized_(authorized), config_(config) {}
 
   bool authorized() const { return authorized_; }
   std::string config() const { return config_; }
 
   static std::string MarshalMsgPack(ReplyClientConnect const& v) {
     std::stringstream ss;
-    std::tuple<bool, std::string> data(v.authorized_, v.config_);
+    std::tuple<int, bool, std::string> data(v.request_id_, v.authorized_,
+                                            v.config_);
     msgpack::pack(ss, data);
     return ss.str();
   }
@@ -62,22 +77,23 @@ class ReplyClientConnect {
     ReplyClientConnect r;
     auto oh = msgpack::unpack(str.data(), str.size());
     auto obj = oh.get();
-    auto data = obj.as<std::tuple<bool, std::string>>();
-    r.authorized_ = std::get<0>(data);
-    r.config_ = std::get<1>(data);
+    auto data = obj.as<std::tuple<int, bool, std::string>>();
+    r.request_id_ = std::get<0>(data);
+    r.authorized_ = std::get<1>(data);
+    r.config_ = std::get<2>(data);
     return r;
   }
 
  private:
-  ReplyClientConnect() {}
+  ReplyClientConnect() : WithRequestID(0) {}
 
   bool authorized_;
   std::string config_;
 };
 
-ReplyClientConnect MakeReplyClientConnect(bool authorized,
+ReplyClientConnect MakeReplyClientConnect(uint request_id, bool authorized,
                                           std::string const& config) {
-  return ReplyClientConnect(authorized, config);
+  return ReplyClientConnect(request_id, authorized, config);
 }
 
 class MsgPackEncoding {
@@ -96,6 +112,11 @@ class MsgPackEncoding {
 }  // namespace autobahn::message
 
 namespace autobahn {
+
+struct Subjects {
+  static inline std::string const kClientConnectSubject =
+      "autobahn.clientconnect";
+};
 
 enum class MessageType : int { kRequest = 1, kReply = 2 };
 
@@ -128,8 +149,14 @@ class Message {
     return *this;
   }
 
+  MessageType message_type() const { return message_type_; }
   std::string subject() const { return subject_; }
   T data() const { return data_; }
+
+  template <class D>
+  D data() const {
+    return autobahn::message::MsgPackEncoding::DecodeString<D>(data_);
+  }
 
  private:
   MessageType message_type_;
@@ -138,10 +165,17 @@ class Message {
   T data_;
 };
 
-template <class T>
+/*template <class T>
 Message<T> MakeMessage(MessageType const& message_type,
                        std::string const& subject, T const& data) {
   return Message<T>(message_type, subject, data);
+}*/
+
+template <class T, class D>
+Message<T> MakeMessage(MessageType const& message_type,
+                       std::string const& subject, D const& data) {
+  auto d = autobahn::message::MsgPackEncoding::EncodeToString(data);
+  return Message<T>(message_type, subject, d);
 }
 
 }  // namespace autobahn
