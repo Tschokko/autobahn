@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 #include <tuple>
+#include <utility>
 
 #include "msgpack.hpp"
 
@@ -234,38 +235,172 @@ class AbstractMessage {
  public:
   virtual MessageTypes message_type() = 0;
   virtual std::string subject() = 0;
-  // virtual T&& data() const = 0;
+
+  template <class T>
+  T data() const;
+  template <class T>
+  void set_data(T const& data);
 };
 
-template <class T>
-class Serializable {
+// --------
+// Currrent
+// --------
+class MsgPackEncoding {
  public:
+  template <class T>
+  static std::string EncodeToString(T const& v) {
+    return T::MarshalMsgPack(v);
+  }
+
+  template <class T>
+  static T DecodeString(std::string const& str) {
+    return T::UnmarshalMsgPack(str);
+  }
 };
 
-class ClientConnectRequestMessage : public AbstractMessage {
+// template<class ENCODING>
+class ZMQMessage {
  public:
-  explicit ClientConnectRequestMessage(std::string const& common_name)
-      : common_name_(common_name) {}
+  ZMQMessage(MessageTypes message_type, std::string const& subject,
+             std::string const& data)
+      : message_type_(message_type), subject_(subject), data_(data) {}
+  ZMQMessage(const ZMQMessage& other) = delete;
+  ZMQMessage(ZMQMessage&& other) {
+    message_type_ = std::move(other.message_type_);
+    subject_ = std::move(other.subject_);
+    data_ = std::move(other.data_);
+  }
 
-  MessageTypes message_type() { return MessageTypes::kRequest; }
-  std::string subject() { return Subjects::kClientConnect; }
+  ZMQMessage& operator=(const ZMQMessage& other) = delete;
+  ZMQMessage& operator=(ZMQMessage&& other) {
+    if (this == &other) {
+      return *this;
+    }
+
+    message_type_ = std::move(other.message_type_);
+    subject_ = std::move(other.subject_);
+    data_ = std::move(other.data_);
+
+    return *this;
+  }
+
+  // accessors & mutators
+  MessageTypes message_type() const { return message_type_; }
+  void set_message_type(MessageTypes message_type) {
+    message_type_ = message_type;
+  }
+  std::string subject() const { return subject_; }
+  void set_subject(std::string const& subject) { subject_ = subject; }
+  std::string data() const { return data_; }
+  void set_data(std::string const& data) { data_ = data; }
+
+  template <class T>
+  T data() const {
+    return autobahn::message::MsgPackEncoding::DecodeString<T>(data_);
+  }
+  template <class T>
+  void set_data(T const& v) {
+    data_ = autobahn::message::MsgPackEncoding::EncodeToString<T>(v);
+  }
 
  private:
+  ZMQMessage() {}
+  MessageTypes message_type_;
+  std::string subject_;
+  std::string data_;
+};
+
+ZMQMessage MakeZMQMessage(MessageTypes message_type, std::string const& subject,
+                          std::string const& data) {
+  return ZMQMessage(message_type, subject, data);
+}
+
+template <class T>
+ZMQMessage MakeZMQMessage(MessageTypes const& message_type,
+                          std::string const& subject, T const& v) {
+  auto data = MsgPackEncoding::EncodeToString(v);
+  return ZMQMessage(message_type, subject, data);
+}
+
+
+class ClientConnectRequest {
+ public:
+  explicit ClientConnectRequest(int request_id, std::string const& common_name)
+      : request_id_(request_id), common_name_(common_name) {}
+
+  ClientConnectRequest(const ClientConnectRequest& other) = delete;
+  ClientConnectRequest(ClientConnectRequest&& other) {
+    request_id_ = std::move(other.request_id_);
+    common_name_ = std::move(other.common_name_);
+  }
+
+  ClientConnectRequest& operator=(const ClientConnectRequest& other) = delete;
+  ClientConnectRequest& operator=(ClientConnectRequest&& other) {
+    if (this == &other) {
+      return *this;
+    }
+
+    request_id_ = std::move(other.request_id_);
+    common_name_ = std::move(other.common_name_);
+
+    return *this;
+  }
+
+  int request_id() const { return request_id_; }
+  std::string common_name() const { return common_name_; }
+
+ private:
+  ClientConnectRequest() {}
+  int request_id_;
   std::string common_name_;
 };
 
-class ClientConnectReqlyMessage : public AbstractMessage {
- public:
-  explicit ClientConnectReqlyMessage(bool authorized, std::string const& config)
-      : authorized_(authorized), config_(config) {}
+ClientConnectRequest MakeClientConnectRequest(int request_id,
+                                              std::string const& common_name) {
+  return ClientConnectRequest(request_id, common_name);
+}
 
-  MessageTypes message_type() { return MessageTypes::kReply; }
-  std::string subject() { return Subjects::kClientConnect; }
+class ClientConnectReqly {
+ public:
+  explicit ClientConnectReqly(int request_id, bool authorized,
+                              std::string const& config)
+      : request_id_(request_id), authorized_(authorized), config_(config) {}
+
+  ClientConnectReqly(const ClientConnectReqly& other) = delete;
+  ClientConnectReqly(ClientConnectReqly&& other) {
+    request_id_ = std::move(other.request_id_);
+    authorized_ = std::move(other.authorized_);
+    config_ = std::move(other.config_);
+  }
+
+  ClientConnectReqly& operator=(const ClientConnectReqly& other) = delete;
+  ClientConnectReqly& operator=(ClientConnectReqly&& other) {
+    if (this == &other) {
+      return *this;
+    }
+
+    request_id_ = std::move(other.request_id_);
+    authorized_ = std::move(other.authorized_);
+    config_ = std::move(other.config_);
+
+    return *this;
+  }
+
+  int request_id() const { return request_id_; }
+  bool authorized() const { return authorized_; }
+  std::string config() const { return config_; }
 
  private:
+  ClientConnectReqly() {}
+  int request_id_;
   bool authorized_;
   std::string config_;
 };
+
+ClientConnectReqly MakeClientConnectReqly(int request_id, bool authorized,
+                                          std::string const& config) {
+  return ClientConnectReqly(request_id, authorized, config);
+}
 
 }  // namespace autobahn
 
