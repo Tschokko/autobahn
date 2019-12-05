@@ -96,6 +96,44 @@ ReplyClientConnect MakeReplyClientConnect(uint request_id, bool authorized,
   return ReplyClientConnect(request_id, authorized, config);
 }
 
+class EventLearnAddress {
+ public:
+  EventLearnAddress(std::string const& common_name, std::string const& addr)
+      : common_name_(common_name), addr_(addr) {}
+
+  std::string common_name() const { return common_name_; }
+  std::string addr() const { return addr_; }
+
+  static std::string MarshalMsgPack(EventLearnAddress const& v) {
+    std::stringstream ss;
+    std::tuple<std::string, std::string> data(v.common_name_, v.addr_);
+    msgpack::pack(ss, data);
+    return ss.str();
+  }
+
+  static EventLearnAddress UnmarshalMsgPack(std::string const& str) {
+    EventLearnAddress r;
+    auto oh = msgpack::unpack(str.data(), str.size());
+    auto obj = oh.get();
+    auto data = obj.as<std::tuple<std::string, std::string>>();
+    r.common_name_ = std::get<0>(data);
+    r.addr_ = std::get<1>(data);
+    return r;
+  }
+
+ private:
+  std::string common_name_;
+  std::string addr_;
+
+  EventLearnAddress() {}
+};
+
+EventLearnAddress MakeEventLearnAddress(std::string const& common_name,
+                                        std::string const& addr) {
+  return EventLearnAddress(common_name, addr);
+}
+
+
 class MsgPackEncoding {
  public:
   template <class T>
@@ -116,9 +154,16 @@ namespace autobahn {
 struct Subjects {
   static inline std::string const kClientConnectSubject =
       "autobahn.clientconnect";
+  static inline std::string const kLearnAddressSubject =
+      "autobahn.learnaddress";
+
+  // ------
+  // hot
+  // -------
+  static inline std::string const kClientConnect = "autobahn.clientconnect";
 };
 
-enum class MessageType : int { kRequest = 1, kReply = 2 };
+enum class MessageType : int { kRequest = 1, kReply = 2, kPublish = 3 };
 
 template <class T>
 class Message {
@@ -155,6 +200,7 @@ class Message {
 
   template <class D>
   D data() const {
+    // TODO(DGL) Add bad_cast exception handling
     return autobahn::message::MsgPackEncoding::DecodeString<D>(data_);
   }
 
@@ -178,6 +224,50 @@ Message<T> MakeMessage(MessageType const& message_type,
   return Message<T>(message_type, subject, d);
 }
 
+// -------
+// Hot
+// -------
+enum class MessageTypes : int { kRequest = 1, kReply = 2, kPublish = 3 };
+
+// template <template <class> class TT, class T>
+class AbstractMessage {
+ public:
+  virtual MessageTypes message_type() = 0;
+  virtual std::string subject() = 0;
+  // virtual T&& data() const = 0;
+};
+
+template <class T>
+class Serializable {
+ public:
+};
+
+class ClientConnectRequestMessage : public AbstractMessage {
+ public:
+  explicit ClientConnectRequestMessage(std::string const& common_name)
+      : common_name_(common_name) {}
+
+  MessageTypes message_type() { return MessageTypes::kRequest; }
+  std::string subject() { return Subjects::kClientConnect; }
+
+ private:
+  std::string common_name_;
+};
+
+class ClientConnectReqlyMessage : public AbstractMessage {
+ public:
+  explicit ClientConnectReqlyMessage(bool authorized, std::string const& config)
+      : authorized_(authorized), config_(config) {}
+
+  MessageTypes message_type() { return MessageTypes::kReply; }
+  std::string subject() { return Subjects::kClientConnect; }
+
+ private:
+  bool authorized_;
+  std::string config_;
+};
+
 }  // namespace autobahn
+
 
 #endif  // AUTOBAHN_SRC_MESSAGE_HPP_

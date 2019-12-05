@@ -47,20 +47,10 @@ class TransportDummy
 class TransportRequestClientConnectStub : public TransportDummy {
  public:
   virtual void SendMessage(autobahn::Message<std::string>&& message) {
-    std::cerr << "TransportRequestClientConnectStub.SendMessage: "
-                 "TransportDummy::SendMessage"
-              << std::endl;
     TransportDummy::SendMessage(std::move(message));
     if (handler_) {
-      std::cerr << "TransportRequestClientConnectStub.SendMessage: "
-                   "handler_->OnMessage"
-                << std::endl;
       // Get request id from request message
       auto request = message.data<autobahn::message::RequestClientConnect>();
-
-      std::cerr << "TransportRequestClientConnectStub.SendMessage: "
-                   "request_id="
-                << request.request_id() << std::endl;
 
       // Prepare and send client connect reply
       auto reply = autobahn::message::MakeReplyClientConnect(
@@ -80,20 +70,10 @@ class TransportRequestClientConnectRequestIDNotInMapStub
     : public TransportDummy {
  public:
   virtual void SendMessage(autobahn::Message<std::string>&& message) {
-    std::cerr << "TransportRequestClientConnectStub.SendMessage: "
-                 "TransportDummy::SendMessage"
-              << std::endl;
     TransportDummy::SendMessage(std::move(message));
     if (handler_) {
-      std::cerr << "TransportRequestClientConnectStub.SendMessage: "
-                   "handler_->OnMessage"
-                << std::endl;
       // Get request id from request message
       auto request = message.data<autobahn::message::RequestClientConnect>();
-
-      std::cerr << "TransportRequestClientConnectStub.SendMessage: "
-                   "request_id="
-                << request.request_id() << std::endl;
 
       // Prepare and send client connect reply, but manipulate request id!
       auto reply = autobahn::message::MakeReplyClientConnect(
@@ -106,6 +86,21 @@ class TransportRequestClientConnectRequestIDNotInMapStub
 
       handler_->OnMessage(std::move(reply_msg));
     }
+  }
+};
+
+class TransportEventLearnAddressStub : public TransportDummy {
+ public:
+  std::string SendMessage_subject;
+  std::string EventLearnAddress_common_name;
+  std::string EventLearnAddress_addr;
+
+  virtual void SendMessage(autobahn::Message<std::string>&& message) {
+    TransportDummy::SendMessage(std::move(message));
+    auto event = message.data<autobahn::message::EventLearnAddress>();
+    SendMessage_subject = message.subject();
+    EventLearnAddress_common_name = event.common_name();
+    EventLearnAddress_addr = event.addr();
   }
 };
 
@@ -161,4 +156,22 @@ TEST(PluginHandler, RequestClientConnect_RequestIDNotInMap) {
 
   // Act & Assert
   ASSERT_THROW(handler->RequestClientConnect("test"), std::logic_error);
+}
+
+TEST(PluginHandler, PublishLearnAddress_ValidMessage) {
+  // Arrange
+  auto transport = std::make_shared<TransportEventLearnAddressStub>();
+  auto handler = std::make_shared<autobahn::PluginHandler>();
+
+  transport->Attach(handler);
+
+  // Act
+  handler->PublishLearnAddress("test", "10.18.0.3/24");
+
+  // Assert
+  ASSERT_EQ(transport->SendMessage_called, 1);
+  ASSERT_EQ(transport->SendMessage_subject,
+            autobahn::Subjects::kLearnAddressSubject);
+  ASSERT_EQ(transport->EventLearnAddress_common_name, "test");
+  ASSERT_EQ(transport->EventLearnAddress_addr, "10.18.0.3/24");
 }

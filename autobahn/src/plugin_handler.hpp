@@ -33,7 +33,6 @@ class PluginHandler
     auto request_id = OpenClientConnectRequest();
 
     // Send request message
-    std::cerr << "PluginHandler.RequestClientConnect: SendMessage" << std::endl;
     auto request =
         autobahn::message::MakeRequestClientConnect(request_id, common_name);
     auto request_msg =
@@ -45,31 +44,38 @@ class PluginHandler
 
     // Fetch the client connect reply future and wait for the response. We
     // asume that the OnMessage handler will receive the reply within a second.
-    // std::cerr << "PluginHandler.RequestClientConnect: get_future" <<
-    // std::endl;
     auto client_connect_reply_future =
         client_connect_replies_[request_id].get_future();
 
-    std::cerr << "PluginHandler.RequestClientConnect: wait_for" << std::endl;
     if (client_connect_reply_future.wait_for(std::chrono::seconds(1)) ==
         std::future_status::timeout) {
       throw TimeoutError();
     }
 
-    std::cerr << "PluginHandler.RequestClientConnect: get" << std::endl;
-    // return std::make_tuple(false, "");
     return client_connect_reply_future.get();
+  }
+
+  void PublishLearnAddress(std::string const& common_name,
+                           std::string const& addr) {
+    // Send event message
+    auto event = autobahn::message::MakeEventLearnAddress(common_name, addr);
+    auto event_msg =
+        autobahn::MakeMessage<std::string,
+                              autobahn::message::EventLearnAddress>(
+            autobahn::MessageType::kPublish,
+            autobahn::Subjects::kLearnAddressSubject, event);
+    transport_->SendMessage(std::move(event_msg));
   }
 
   void OnAttach(
       const std::shared_ptr<
           autobahn::Transport<autobahn::Message<std::string>>>& transport) {
-    std::cerr << "PluginHandler.OnAttach" << std::endl;
     transport_ = transport;
   }
+
   void OnDetach() { transport_.reset(); }
+
   void OnMessage(autobahn::Message<std::string>&& message) {
-    std::cerr << "PluginHandler.OnMessage" << std::endl;
     switch (message.message_type()) {
       case autobahn::MessageType::kReply:
         ProcessReplyMessage(std::move(message));
@@ -86,33 +92,26 @@ class PluginHandler
       client_connect_replies_;
 
   int OpenClientConnectRequest() {
+    // Generate a random request id
     std::srand(std::time(nullptr));
     int request_id = std::rand();
-    std::cerr << "PluginHandler.OpenClientConnectRequest: request_id="
-              << request_id << std::endl;
 
+    // Create a promise for the request
     client_connect_replies_[request_id] =
         std::promise<autobahn::message::ReplyClientConnect>();
+
     return request_id;
   }
 
   void ProcessReplyMessage(autobahn::Message<std::string>&& message) {
-    std::cerr << "PluginHandler.ProcessReplyMessage" << std::endl;
     if (message.subject() == autobahn::Subjects::kClientConnectSubject) {
       ProcessClientConnectReply(std::move(message));
     }
   }
 
   void ProcessClientConnectReply(autobahn::Message<std::string>&& message) {
-    std::cerr << "PluginHandler.ProcessClientConnectReply" << std::endl;
-    // auto rv = std::make_tuple(true, "notok");
-    // auto reply = autobahn::message::MsgPackEncoding::DecodeString<
-    //    autobahn::message::ReplyClientConnect>(message.data());
     auto reply = message.data<autobahn::message::ReplyClientConnect>();
 
-    std::cerr << "PluginHandler.ProcessClientConnectReply: request_id="
-              << reply.request_id() << std::endl;
-    // client_connect_reply_.set_value(reply);
     if (client_connect_replies_.find(reply.request_id()) ==
         client_connect_replies_.end()) {
       throw std::logic_error("client connect reply has unknown request id");
