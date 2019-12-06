@@ -6,36 +6,24 @@
 #include <thread>
 
 #include "boost/asio.hpp"
-#include "message.hpp"
 #include "msgpack.hpp"
 #include "zmq.hpp"
 #include "zmq_addon.hpp"
 
+#include "message.hpp"
+#include "server_handler.hpp"
+#include "transport.hpp"
+
 int main() {
-  boost::asio::io_service io_service;
-  boost::asio::local::stream_protocol::endpoint ep("/tmp/autobahn.sock");
-  boost::asio::local::stream_protocol::acceptor acceptor(io_service, ep);
-  boost::asio::local::stream_protocol::socket socket(io_service);
+  auto context = std::make_shared<zmq::context_t>(1);
+  auto transport = std::make_shared<autobahn::ZMQTransport>(context);
+  auto handler = std::make_shared<autobahn::ServerHandler>();
 
-  acceptor.accept(socket);
+  transport->Attach(handler);
 
-  for (;;) {
-    boost::asio::streambuf buffer;
-    boost::system::error_code ec;
-    if (0 == boost::asio::read(socket, buffer,
-                               boost::asio::transfer_at_least(1), ec))
-      break;
+  transport->Bind("ipc:///tmp/autobahn");
+  transport->Listen();
 
-    if (ec && ec != boost::asio::error::eof) {
-      std::cerr << "error: " << ec.message() << std::endl;
-    } else {
-      std::string data(boost::asio::buffer_cast<const char*>(buffer.data()));
-      std::cout << "message: " << data << std::endl;
-      if (data == "quit") break;
-    }
-  }
-
-  std::cout << "Fine!" << std::endl;
   /*zmq::context_t ctx(1);
   zmq::socket_t sock(ctx, zmq::socket_type::rep);
   sock.bind("ipc:///tmp/autobahn-1");
@@ -59,7 +47,8 @@ int main() {
       // Reply
       auto rep = autobahn::message::MakeReplyClientConnect(
           true, "ifconfig-push 10.18.0.3 255.255.0.0");
-      auto rep_data = autobahn::message::MsgPackEncoding::EncodeToString(rep);
+      auto rep_data =
+  autobahn::message::MsgPackEncoding::EncodeToString(rep);
 
       zmq::multipart_t reply_msg(rep_data);
       reply_msg.send(sock);

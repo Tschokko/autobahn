@@ -11,27 +11,18 @@
 #include "autobahn/src/transport.hpp"
 #include "gtest/gtest.h"
 
-class TransportDummy
-    : public autobahn::Transport<autobahn::Message<std::string>>,
-      public std::enable_shared_from_this<TransportDummy> {
+class TransportDummy : public autobahn::Transport<autobahn::Message>,
+                       public std::enable_shared_from_this<TransportDummy> {
  public:
-  int Connect_called = 0;
-  int Disconnect_called = 0;
   int SendMessage_called = 0;
   int Attach_called = 0;
   int Detach_called = 0;
-  std::shared_ptr<autobahn::TransportHandler<autobahn::Message<std::string>>>
-      handler_;
+  TransportHandlerPtrType handler_;
 
-  virtual void Connect() { Connect_called++; }
-  virtual void Disconnect() { Disconnect_called++; }
-  virtual bool IsConnected() const { return true; }
-  virtual void SendMessage(autobahn::Message<std::string>&& message) {
+  virtual void SendMessage(autobahn::Message&& message) {
     SendMessage_called++;
   }
-  virtual void
-  Attach(const std::shared_ptr<
-         autobahn::TransportHandler<autobahn::Message<std::string>>>& handler) {
+  virtual void Attach(const TransportHandlerPtrType& handler) {
     Attach_called++;
     handler_ = handler;
     handler_->OnAttach(this->shared_from_this());
@@ -41,25 +32,22 @@ class TransportDummy
     handler_->OnDetach();
     handler_.reset();
   }
-  virtual bool HasHandler() const { return true; }
 };
 
 class TransportRequestClientConnectStub : public TransportDummy {
  public:
-  virtual void SendMessage(autobahn::Message<std::string>&& message) {
+  virtual void SendMessage(autobahn::Message&& message) {
     TransportDummy::SendMessage(std::move(message));
     if (handler_) {
       // Get request id from request message
-      auto request = message.data<autobahn::message::RequestClientConnect>();
+      auto request = message.data<autobahn::ClientConnectRequest>();
 
       // Prepare and send client connect reply
-      auto reply = autobahn::message::MakeReplyClientConnect(
-          request.request_id(), true, "config");
-      auto reply_msg =
-          autobahn::MakeMessage<std::string,
-                                autobahn::message::ReplyClientConnect>(
-              autobahn::MessageType::kReply,
-              autobahn::Subjects::kClientConnectSubject, reply);
+      auto reply = autobahn::MakeClientConnectReply(request.request_id(), true,
+                                                    "config");
+      auto reply_msg = autobahn::MakeMessage<autobahn::ClientConnectReply>(
+          autobahn::MessageTypes::kReply, autobahn::Subjects::kClientConnect,
+          reply);
 
       handler_->OnMessage(std::move(reply_msg));
     }
@@ -69,53 +57,42 @@ class TransportRequestClientConnectStub : public TransportDummy {
 class TransportRequestClientConnectRequestIDNotInMapStub
     : public TransportDummy {
  public:
-  virtual void SendMessage(autobahn::Message<std::string>&& message) {
+  virtual void SendMessage(autobahn::Message&& message) {
     TransportDummy::SendMessage(std::move(message));
     if (handler_) {
       // Get request id from request message
-      auto request = message.data<autobahn::message::RequestClientConnect>();
+      auto request = message.data<autobahn::ClientConnectRequest>();
 
       // Prepare and send client connect reply, but manipulate request id!
-      auto reply = autobahn::message::MakeReplyClientConnect(
-          request.request_id() + 1, true, "config");
-      auto reply_msg =
-          autobahn::MakeMessage<std::string,
-                                autobahn::message::ReplyClientConnect>(
-              autobahn::MessageType::kReply,
-              autobahn::Subjects::kClientConnectSubject, reply);
+      auto reply = autobahn::MakeClientConnectReply(request.request_id() + 1,
+                                                    true, "config");
+      auto reply_msg = autobahn::MakeMessage<autobahn::ClientConnectReply>(
+          autobahn::MessageTypes::kReply, autobahn::Subjects::kClientConnect,
+          reply);
 
       handler_->OnMessage(std::move(reply_msg));
     }
   }
 };
 
-class TransportEventLearnAddressStub : public TransportDummy {
+class TransportRequestLearnAddressStub : public TransportDummy {
  public:
-  std::string SendMessage_subject;
-  std::string EventLearnAddress_common_name;
-  std::string EventLearnAddress_addr;
-
-  virtual void SendMessage(autobahn::Message<std::string>&& message) {
+  virtual void SendMessage(autobahn::Message&& message) {
     TransportDummy::SendMessage(std::move(message));
-    auto event = message.data<autobahn::message::EventLearnAddress>();
-    SendMessage_subject = message.subject();
-    EventLearnAddress_common_name = event.common_name();
-    EventLearnAddress_addr = event.addr();
+    if (handler_) {
+      // Get request id from request message
+      auto request = message.data<autobahn::LearnAddressRequest>();
+
+      // Prepare and send learn address reply
+      auto reply = autobahn::MakeLearnAddressReply(request.request_id(), true);
+      auto reply_msg = autobahn::MakeMessage<autobahn::LearnAddressReply>(
+          autobahn::MessageTypes::kReply, autobahn::Subjects::kLearnAddress,
+          reply);
+
+      handler_->OnMessage(std::move(reply_msg));
+    }
   }
 };
-
-/*TEST(plugin_Transport, SendMessage_Called) {
-  // Arrange
-  auto transport = std::make_shared<TransportRequestClientConnectStub>();
-
-  // Act
-  transport->SendMessage(autobahn::MakeMessage<std::string>(
-      autobahn::MessageType::kRequest,
-      autobahn::Subjects::kClientConnectSubject, "test"));
-
-  // Assert
-  ASSERT_EQ(transport->SendMessage_called, 1);
-}*/
 
 TEST(PluginHandler, RequestClientConnect_NoTransportException) {
   // Arrange
@@ -126,10 +103,11 @@ TEST(PluginHandler, RequestClientConnect_NoTransportException) {
   // transport->Attach(handler);
 
   // Act & Assert
-  ASSERT_THROW(handler->RequestClientConnect("test"), std::logic_error);
+  std::error_code ec;
+  ASSERT_THROW(handler->RequestClientConnect("test", ec), std::logic_error);
 }
 
-TEST(PluginHandler, RequestClientConnect_AuthorizedClient) {
+TEST(PluginHandler, RequestClientConnect_AuthorizedTrue) {
   // Arrange
   auto transport = std::make_shared<TransportRequestClientConnectStub>();
   auto handler = std::make_shared<autobahn::PluginHandler>();
@@ -137,13 +115,15 @@ TEST(PluginHandler, RequestClientConnect_AuthorizedClient) {
   transport->Attach(handler);
 
   // Act
-  auto reply = handler->RequestClientConnect("test");
+  std::error_code ec;
+  auto reply = handler->RequestClientConnect("test", ec);
 
   // Assert
+  ASSERT_EQ(ec.value(), 0);
   ASSERT_TRUE(reply.authorized());
 }
 
-TEST(PluginHandler, RequestClientConnect_RequestIDNotInMap) {
+TEST(PluginHandler, RequestClientConnect_Timeout) {
   // Arrange
   auto transport =
       std::make_shared<TransportRequestClientConnectRequestIDNotInMapStub>();
@@ -152,26 +132,26 @@ TEST(PluginHandler, RequestClientConnect_RequestIDNotInMap) {
   transport->Attach(handler);
 
   // Act
-  // auto reply = handler->RequestClientConnect("test");
+  std::error_code ec;
+  auto reply = handler->RequestClientConnect("test", ec);
 
   // Act & Assert
-  ASSERT_THROW(handler->RequestClientConnect("test"), std::logic_error);
+  ASSERT_EQ(ec, autobahn::ErrorCodes::RequestTimeout);
 }
 
-TEST(PluginHandler, PublishLearnAddress_ValidMessage) {
+TEST(PluginHandler, RequestLearnAddresss_LearnedTrue) {
   // Arrange
-  auto transport = std::make_shared<TransportEventLearnAddressStub>();
+  auto transport = std::make_shared<TransportRequestLearnAddressStub>();
   auto handler = std::make_shared<autobahn::PluginHandler>();
 
   transport->Attach(handler);
 
   // Act
-  handler->PublishLearnAddress("test", "10.18.0.3/24");
+  std::error_code ec;
+  auto reply = handler->RequestLearnAddress(
+      autobahn::LearnAddressOperations::kAdd, "10.18.0.3/24", "test", ec);
 
   // Assert
-  ASSERT_EQ(transport->SendMessage_called, 1);
-  ASSERT_EQ(transport->SendMessage_subject,
-            autobahn::Subjects::kLearnAddressSubject);
-  ASSERT_EQ(transport->EventLearnAddress_common_name, "test");
-  ASSERT_EQ(transport->EventLearnAddress_addr, "10.18.0.3/24");
+  ASSERT_EQ(ec.value(), 0);
+  ASSERT_TRUE(reply.learned());
 }

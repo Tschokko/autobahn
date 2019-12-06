@@ -66,74 +66,43 @@ namespace autobahn::plugin {
   zmq::socket_t socket_;
 };*/
 
-class TransportDummy
-    : public autobahn::Transport<autobahn::Message<std::string>>,
-      public std::enable_shared_from_this<TransportDummy> {
- public:
-  int Connect_called = 0;
-  int Disconnect_called = 0;
-  int SendMessage_called = 0;
-  int Attach_called = 0;
-  int Detach_called = 0;
-  std::shared_ptr<autobahn::TransportHandler<autobahn::Message<std::string>>>
-      handler_;
-
-  virtual void Connect() { Connect_called++; }
-  virtual void Disconnect() { Disconnect_called++; }
-  virtual bool IsConnected() const { return true; }
-  virtual void SendMessage(autobahn::Message<std::string>&& message) {
-    SendMessage_called++;
-  }
-  virtual void
-  Attach(const std::shared_ptr<
-         autobahn::TransportHandler<autobahn::Message<std::string>>>& handler) {
-    Attach_called++;
-    handler_ = handler;
-    handler_->OnAttach(this->shared_from_this());
-  }
-  virtual void Detach() {
-    Detach_called++;
-    handler_->OnDetach();
-    handler_.reset();
-  }
-  virtual bool HasHandler() const { return true; }
-};
-
-class TransportRequestClientConnectStub : public TransportDummy {
- public:
-  virtual void SendMessage(autobahn::Message<std::string>&& message) {
-    std::cerr << "TransportRequestClientConnectStub.SendMessage: "
-                 "TransportDummy::SendMessage"
-              << std::endl;
-    TransportDummy::SendMessage(std::move(message));
-    if (handler_) {
-      std::cerr << "TransportRequestClientConnectStub.SendMessage: "
-                   "handler_->OnMessage"
-                << std::endl;
-      // Get request id from request message
-      auto request = message.data<autobahn::message::RequestClientConnect>();
-
-      std::cerr << "TransportRequestClientConnectStub.SendMessage: "
-                   "request_id="
-                << request.request_id() << std::endl;
-
-      // Prepare and send client connect reply
-      auto reply = autobahn::message::MakeReplyClientConnect(
-          request.request_id(), true, "config");
-      auto reply_msg =
-          autobahn::MakeMessage<std::string,
-                                autobahn::message::ReplyClientConnect>(
-              autobahn::MessageType::kReply,
-              autobahn::Subjects::kClientConnectSubject, reply);
-
-      handler_->OnMessage(std::move(reply_msg));
-    }
-  }
-};
-
 int main() {
-  using namespace autobahn;
-  using namespace boost::asio;
+  auto context = std::make_shared<zmq::context_t>(1);
+  auto transport = std::make_shared<autobahn::ZMQTransport>(context);
+  auto handler = std::make_shared<autobahn::PluginHandler>();
+
+  transport->Attach(handler);
+
+  transport->Connect("ipc:///tmp/autobahn");
+
+  std::thread listening_thread([&] { transport->Listen(); });
+
+  std::error_code ec;
+  auto reply = handler->RequestClientConnect("test", ec);
+  if (!ec) {
+    std::cout << "Request client connect: config=" << reply.config()
+              << std::endl;
+  } else {
+    std::cerr << ec << std::endl;
+  }
+
+  std::error_code learn_address_ec;
+  auto learn_address_reply = handler->RequestLearnAddress(autobahn::LearnAddressOperations::kAdd, "10.18.0.3/24", "test", ec);
+  if (!learn_address_ec) {
+    std::cout << "Request learn address: learned=" << learn_address_reply.learned()
+              << std::endl;
+  } else {
+    std::cerr << learn_address_ec << std::endl;
+  }
+
+  // handler->PublishLearnAddress("test", "10.18.0.3/24");
+
+  transport->Shutdown(3);
+
+  listening_thread.join();
+
+  // using namespace autobahn;
+  // using namespace boost::asio;
 
   /*zmq::context_t ctx(1);
   zmq::socket_t sock(ctx, zmq::socket_type::req);
@@ -188,12 +157,6 @@ int main() {
       std::cout << "send ok: " << line << std::endl;
     }
   }*/
-
-  auto transport = std::make_shared<TransportRequestClientConnectStub>();
-  auto handler = std::make_shared<autobahn::PluginHandler>();
-
-  transport->Attach(handler);
-  auto reply = handler->RequestClientConnect("test");
 
   return 0;
 }
