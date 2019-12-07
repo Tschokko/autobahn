@@ -7,19 +7,21 @@
 #include <system_error>
 
 namespace autobahn {
-enum class ErrorCodes {
+enum class error_codes {
   // no 0
-  RequestTimeout = 1,  // The request timed out
+  request_timeout = 1,  // The request timed out
+  // server controller errors
+  no_client_config = 1000,
 };
 }  // namespace autobahn
 
 namespace std {
 template <>
-struct is_error_code_enum<autobahn::ErrorCodes> : true_type {};
+struct is_error_code_enum<autobahn::error_codes> : true_type {};
 }  // namespace std
 
 namespace autobahn {
-std::error_code make_error_code(autobahn::ErrorCodes);
+std::error_code make_error_code(autobahn::error_codes);
 }
 
 #endif  // AUTOBAHN_SRC_ERROR_CODES_HPP_

@@ -13,7 +13,9 @@
         "/Users/tlx3m3j/src/github.com/zeromq/cppzmq-4.5.0",
         "/home/dgladovic/src/github.com/zeromq/zeromq-4.3.2/include",
         "/home/dgladovic/src/github.com/zeromq/cppzmq-4.5.0",
+        "/home/tlx3m3j/src/github.com/zeromq/cppzmq-4.5.0",
         "/home/dgladovic/src/github.com/msgpack/msgpack-3.2.0/include",
+        "/home/tlx3m3j/src/github.com/msgpack/msgpack-3.2.0/include",
         "${workspaceFolder}/third_party/boost_1_68_0",
         "/home/dgladovic/src/boost/boost_1_68_0"
       ],

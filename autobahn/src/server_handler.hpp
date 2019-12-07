@@ -11,72 +11,82 @@
 #include <string>
 #include <tuple>
 
+#include "client_config_service.hpp"
 #include "message.hpp"
 #include "transport.hpp"
 
 namespace autobahn {
 
-class ServerHandler : public autobahn::TransportHandler<autobahn::Message>,
-                      public std::enable_shared_from_this<ServerHandler> {
+class server_handler : public autobahn::transport_handler,
+                       public std::enable_shared_from_this<server_handler> {
  public:
-  void OnAttach(const TransportPtrType& transport) { transport_ = transport; }
+  server_handler(std::shared_ptr<autobahn::client_config_service> const&
+                     client_config_service)
+      : client_config_service_(client_config_service) {}
 
-  void OnDetach() { transport_.reset(); }
+  void on_attach(const transport_ptr_t& transport) { transport_ = transport; }
 
-  void OnMessage(autobahn::Message&& message) {
+  void on_detach() { transport_.reset(); }
+
+  void on_message(autobahn::message&& message) {
     switch (message.message_type()) {
-      case autobahn::MessageTypes::kRequest:
-        ProcessRequestMessage(std::move(message));
+      case autobahn::message_types::request:
+        process_request_message(std::move(message));
         break;
-      case autobahn::MessageTypes::kReply:
+      case autobahn::message_types::reply:
         // log not supported
         break;
-      case autobahn::MessageTypes::kPublish:
+      case autobahn::message_types::publish:
         // log not supported
         break;
     }
   }
 
  private:
-  TransportPtrType transport_;
+  std::shared_ptr<autobahn::client_config_service> client_config_service_;
+  transport_ptr_t transport_;
 
-  void SendMessage(autobahn::Message&& message) {
+  void send_message(autobahn::message&& message) {
     if (!transport_) {
-      throw std::logic_error("No transport attached");
+      throw std::logic_error(
+          "handler send message failed: no transport attached");
     }
 
-    transport_->SendMessage(std::move(message));
+    transport_->send_message(std::move(message));
   }
 
-  void ProcessRequestMessage(autobahn::Message&& message) {
-    if (message.subject() == autobahn::Subjects::kClientConnect) {
-      ProcessClientConnectRequest(std::move(message));
-    } else if (message.subject() == autobahn::Subjects::kLearnAddress) {
-      ProcessLearnAddressRequest(std::move(message));
+  void process_request_message(autobahn::message&& message) {
+    if (message.subject() == autobahn::message_subjects::clientconnect) {
+      process_client_connect_request(std::move(message));
+    } else if (message.subject() == autobahn::message_subjects::learnaddress) {
+      process_learn_address_request(std::move(message));
     }
   }
 
-  void ProcessClientConnectRequest(autobahn::Message&& message) {
-    auto request = message.data<autobahn::ClientConnectRequest>();
+  void process_client_connect_request(autobahn::message&& message) {
+    auto request = message.data<autobahn::client_connect_request>();
 
-    auto reply =
-        autobahn::MakeClientConnectReply(request.request_id(), true, "config");
-    auto reply_msg = autobahn::MakeMessage<autobahn::ClientConnectReply>(
-        autobahn::MessageTypes::kReply, autobahn::Subjects::kClientConnect,
-        reply);
+    auto const& [valid, config] =
+        client_config_service_->get_client_config(request.common_name());
 
-    SendMessage(std::move(reply_msg));
+    auto reply = autobahn::make_client_connect_reply(request.request_id(),
+                                                     valid, config);
+    auto reply_msg = autobahn::make_message<autobahn::client_connect_reply>(
+        autobahn::message_types::reply,
+        autobahn::message_subjects::clientconnect, reply);
+
+    send_message(std::move(reply_msg));
   }
 
-  void ProcessLearnAddressRequest(autobahn::Message&& message) {
-    auto request = message.data<autobahn::LearnAddressRequest>();
+  void process_learn_address_request(autobahn::message&& message) {
+    auto request = message.data<autobahn::learn_address_request>();
 
-    auto reply = autobahn::MakeLearnAddressReply(request.request_id(), true);
-    auto reply_msg = autobahn::MakeMessage<autobahn::LearnAddressReply>(
-        autobahn::MessageTypes::kReply, autobahn::Subjects::kLearnAddress,
-        reply);
+    auto reply = autobahn::make_learn_address_reply(request.request_id(), true);
+    auto reply_msg = autobahn::make_message<autobahn::learn_address_reply>(
+        autobahn::message_types::reply,
+        autobahn::message_subjects::learnaddress, reply);
 
-    SendMessage(std::move(reply_msg));
+    send_message(std::move(reply_msg));
   }
 };
 

@@ -17,84 +17,91 @@
 
 namespace autobahn {
 
-template <class T>
-class TransportHandler;
+// TODO(DGL): The transport is responsible for the proper message encoding.
+//            That's why the transport implementation needs the encoding spec.
+//            A transport handler encodes / decodes messages thru a templated
+//            function.
+// template <class T>
+class transport_handler;
 
-template <class T>
-class Transport {
+// template <class T>
+class transport {
  public:
-  typedef autobahn::Transport<T> TransportType;
-  typedef std::shared_ptr<autobahn::TransportHandler<T>>
-      TransportHandlerPtrType;
+  typedef autobahn::transport transport_t;
+  typedef std::shared_ptr<autobahn::transport_handler> transport_handler_ptr_t;
 
-  virtual ~Transport() = default;
+  virtual ~transport() = default;
 
-  virtual void SendMessage(T&& message) = 0;
-  virtual void Attach(TransportHandlerPtrType const& handler) = 0;
-  virtual void Detach() = 0;
+  virtual void bind(std::string const& addr) = 0;
+  virtual void listen() = 0;
+  virtual void attach(transport_handler_ptr_t const& handler) = 0;
+  virtual void detach() = 0;
+  virtual void send_message(autobahn::message&& message) = 0;
 };
 
 
-template <class T>
-class TransportHandler {
+// template <class T>
+class transport_handler {
  public:
-  typedef std::shared_ptr<autobahn::Transport<T>> TransportPtrType;
+  typedef std::shared_ptr<autobahn::transport> transport_ptr_t;
 
-  virtual ~TransportHandler() = default;
+  virtual ~transport_handler() = default;
 
-  virtual void OnAttach(TransportPtrType const& transport) = 0;
-  virtual void OnDetach() = 0;
-  virtual void OnMessage(T&& message) = 0;
+  virtual void on_attach(transport_ptr_t const& transport) = 0;
+  virtual void on_detach() = 0;
+  virtual void on_message(autobahn::message&& message) = 0;
 };
 
-class ZMQTransport : public Transport<autobahn::Message>,
-                     public std::enable_shared_from_this<ZMQTransport> {
+class zmq_transport : public transport,
+                      public std::enable_shared_from_this<zmq_transport> {
  public:
-  explicit ZMQTransport(std::shared_ptr<zmq::context_t> const& context)
+  explicit zmq_transport(std::shared_ptr<zmq::context_t> const& context)
       : context_(context),
         socket_(*context, zmq::socket_type::pair),
         shutdown_socket_(*context, zmq::socket_type::pair) {
-    // Bind to our shutdown socket to receive the shutdown message send by the
-    // Shutdown function.
+    // bind to our shutdown socket to receive the shutdown message send by the
+    // shutdown function.
     shutdown_socket_.bind("inproc://shutdown_socket");
   }
 
-  void Bind(std::string const& addr) { socket_.bind(addr); }
-  void Connect(std::string const& addr) { socket_.connect(addr); }
+  void bind(std::string const& addr) { socket_.bind(addr); }
+  void connect(std::string const& addr) { socket_.connect(addr); }
 
-  void SendMessage(autobahn::Message&& message) {
+  void send_message(autobahn::message&& message) {
     std::cerr << "Send Message: message_type="
               << static_cast<int>(message.message_type())
               << ", subject=" << message.subject() << std::endl;
 
     zmq::multipart_t msg;
-    msg.addstr(EncodeMessageTypeToString(message.message_type()));
+    msg.addstr(encode_message_type_to_string(message.message_type()));
     msg.addstr(message.subject());
     msg.addstr(message.data());
 
     msg.send(socket_);
   }
 
-  void Attach(const TransportHandlerPtrType& handler) {
+  void attach(const transport_handler_ptr_t& handler) {
     if (handler_) {
-      throw std::logic_error("handler already attached");
+      throw std::logic_error(
+          "transport attach handler failed: a handler is already attached");
     }
     handler_ = handler;
-    handler_->OnAttach(
-        std::static_pointer_cast<TransportType>(shared_from_this()));
+    handler_->on_attach(
+        std::static_pointer_cast<transport_t>(shared_from_this()));
   }
 
-  void Detach() {
+  void detach() {
     if (!handler_) {
-      throw std::logic_error("no handler attached");
+      throw std::logic_error(
+          "transport detach handler failed: no handler attached");
     }
-    handler_->OnDetach();
+    handler_->on_detach();
     handler_.reset();
   }
 
-  void Listen() {
-    zmq_pollitem_t items[] = {{socket_, 0, ZMQ_POLLIN, 0},
-                              {shutdown_socket_, 0, ZMQ_POLLIN, 0}};
+  void listen() {
+    zmq::pollitem_t items[] = {{socket_, 0, ZMQ_POLLIN, 0},
+                               {shutdown_socket_, 0, ZMQ_POLLIN, 0}};
 
     for (;;) {
       if (zmq::poll(items, 2, -1) > 0) {
@@ -102,7 +109,7 @@ class ZMQTransport : public Transport<autobahn::Message>,
           zmq::multipart_t msg;
           msg.recv(socket_);
 
-          auto message_type = DecodeMessageTypeString(msg.popstr());
+          auto message_type = decode_message_type_string(msg.popstr());
           auto subject = msg.popstr();
           auto data = msg.popstr();
 
@@ -111,28 +118,32 @@ class ZMQTransport : public Transport<autobahn::Message>,
                     << std::endl;
 
           if (handler_) {
-            handler_->OnMessage(
-                autobahn::MakeMessage(message_type, subject, data));
+            handler_->on_message(
+                autobahn::make_message(message_type, subject, data));
           }
         }
         if (items[1].revents & ZMQ_POLLIN) {
-          std::cerr << "Shutdown signal received" << std::endl;
+          std::cerr << "shutdown signal received" << std::endl;
           break;
         }
       }
     }
 
-    // Clean properly our ZeroMQ sockets
+    // Clean properly our sockets
     socket_.setsockopt(ZMQ_LINGER, 0);
     shutdown_socket_.setsockopt(ZMQ_LINGER, 0);
 
     socket_.close();
     shutdown_socket_.close();
 
+    // Tell our shutdown function that we're leaving the listen function now.
     shutdown_.set_value(true);
   }
 
-  void Shutdown(size_t timeout) {
+  void shutdown(size_t timeout) {
+    // connect to our shutdown socket and send a message. This message will be
+    // received by the listen function and breaks the loop. After cleanup of our
+    // sockets we receive a future.
     zmq::socket_t socket(*context_, zmq::socket_type::pair);
     socket.connect("inproc://shutdown_socket");
     zmq::message_t shutdown_msg("0", 1);
@@ -142,88 +153,43 @@ class ZMQTransport : public Transport<autobahn::Message>,
 
     if (shutdown_future.wait_for(std::chrono::seconds(timeout)) ==
         std::future_status::timeout) {
-      throw std::runtime_error("shutdown failed");
+      throw std::runtime_error(
+          "transport shutdown failed: operation timed out");
     }
   }
 
  private:
-  TransportHandlerPtrType handler_;
+  transport_handler_ptr_t handler_;
   std::shared_ptr<zmq::context_t> context_;
   zmq::socket_t socket_;
   zmq::socket_t shutdown_socket_;
   std::promise<bool> shutdown_;
 
-  static std::string EncodeMessageTypeToString(MessageTypes v) {
+  static std::string encode_message_type_to_string(message_types v) {
     switch (v) {
-      case MessageTypes::kRequest:
+      case message_types::request:
         return "REQ";
-      case MessageTypes::kReply:
+      case message_types::reply:
         return "REP";
-      case MessageTypes::kPublish:
+      case message_types::publish:
         return "PUB";
     }
+
+    // This should never happen because compiler should prevent passing a wrong
+    // message type. That's why we throw an exception here.
+    throw std::runtime_error(
+        "encode message type to string failed: invalid message type");
   }
 
-  static MessageTypes DecodeMessageTypeString(std::string const& str) {
-    if (str == "REQ") return MessageTypes::kRequest;
-    if (str == "REP") return MessageTypes::kReply;
-    if (str == "PUB") return MessageTypes::kPublish;
-    throw std::bad_cast();
+  static message_types decode_message_type_string(std::string const& str) {
+    if (str == "REQ") return message_types::request;
+    if (str == "REP") return message_types::reply;
+    if (str == "PUB") return message_types::publish;
+
+    throw std::runtime_error(
+        "decode message type string failed: invalid message type");
   }
 };
-
-/*template <class T>
-class UnixDomainSocketTransport
-    : public Transport,
-      public std::enable_shared_from_this<UnixDomainSocketTransport> {
- public:
-  explicit UnixDomainSocketTransport(boost::asio::io_service const& io_service,
-                                     std::string const& addr)
-      : endpoint_(addr),
-        acceptor_(io_service, endpoint_),
-        socket_(io_service) {}
-
-  void Listen() {
-    acceptor.accept(socket_);
-
-    for (;;) {
-      boost::asio::streambuf buffer;
-      boost::system::error_code ec;
-      if (0 == boost::asio::read(socket, buffer,
-                                 boost::asio::transfer_at_least(1), ec))
-        break;
-
-      if (ec && ec != boost::asio::error::eof) {
-        std::cerr << "error: " << ec.message() << std::endl;
-      } else {
-        std::string data(boost::asio::buffer_cast<const char*>(buffer.data()));
-
-        // std::cout << "message: " << data << std::endl;
-        // if (data == "quit") break;
-      }
-    }
-  }
-  virtual void Connect() {}
-  virtual void Disconnect() {}
-  virtual bool IsConnected() const {}
-  virtual void SendMessage(T&& message) {}
-  virtual void Attach(const std::shared_ptr<TransportHandler<T>>& handler) {
-    handler_ = handler;
-    handler_->OnAttach(this->shared_from_this());
-  }
-  virtual void Detach() {
-    handler_->OnDetach();
-    handler_.reset();
-  }
-  virtual bool HasHandler() const {}
-
- private:
-  std::shared_ptr<autobahn::TransportHandler> handler_;
-  // boost::asio::io_service io_service_;
-  boost::asio::local::stream_protocol::endpoint endpoint_;
-  boost::asio::local::stream_protocol::acceptor acceptor_;
-  boost::asio::local::stream_protocol::socket socket_;
-};*/
 
 }  // namespace autobahn
 

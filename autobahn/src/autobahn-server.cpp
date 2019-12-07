@@ -6,54 +6,44 @@
 #include <thread>
 
 #include "boost/asio.hpp"
+#include "boost/asio/ip/network_v4.hpp"
+#include "boost/asio/ip/network_v6.hpp"
 #include "msgpack.hpp"
 #include "zmq.hpp"
 #include "zmq_addon.hpp"
 
+#include "client_config_service.hpp"
 #include "message.hpp"
 #include "server_handler.hpp"
 #include "transport.hpp"
 
+void build_client_configs(
+    std::shared_ptr<autobahn::client_config_service> const&
+        client_config_service) {
+  using boost::asio::ip::make_network_v4;
+  using boost::asio::ip::make_network_v6;
+
+  autobahn::client_config config;
+  config.set_ipv4_interface_config(make_network_v4("10.18.0.3/24"));
+  config.set_ipv6_interface_config(make_network_v6("2001:db8:cafe::3/112"));
+
+  client_config_service->add_or_update_client_config("test", std::move(config));
+}
+
 int main() {
   auto context = std::make_shared<zmq::context_t>(1);
-  auto transport = std::make_shared<autobahn::ZMQTransport>(context);
-  auto handler = std::make_shared<autobahn::ServerHandler>();
+  auto transport = std::make_shared<autobahn::zmq_transport>(context);
+  auto client_config_service =
+      std::make_shared<autobahn::client_config_service>();
+  build_client_configs(client_config_service);
 
-  transport->Attach(handler);
+  auto handler =
+      std::make_shared<autobahn::server_handler>(client_config_service);
 
-  transport->Bind("ipc:///tmp/autobahn");
-  transport->Listen();
+  transport->attach(handler);
 
-  /*zmq::context_t ctx(1);
-  zmq::socket_t sock(ctx, zmq::socket_type::rep);
-  sock.bind("ipc:///tmp/autobahn-1");
-
-  std::cout << "Start listening..." << std::endl;
-
-  while (true) {
-    zmq::multipart_t multipart;
-
-    auto ok = multipart.recv(sock);
-    if (ok) {
-      auto req_subject = multipart.popstr();
-      std::cout << "subject = " << req_subject << std::endl;
-
-      // Request
-      auto req_data = multipart.popstr();
-      auto req = autobahn::message::MsgPackEncoding::DecodeString<
-          autobahn::message::RequestClientConnect>(req_data);
-      std::cout << "data = " << req.common_name() << std::endl;
-
-      // Reply
-      auto rep = autobahn::message::MakeReplyClientConnect(
-          true, "ifconfig-push 10.18.0.3 255.255.0.0");
-      auto rep_data =
-  autobahn::message::MsgPackEncoding::EncodeToString(rep);
-
-      zmq::multipart_t reply_msg(rep_data);
-      reply_msg.send(sock);
-    }
-  }*/
+  transport->bind("ipc:///tmp/autobahn");
+  transport->listen();
 
   return 0;
 }

@@ -7,31 +7,32 @@
 
 namespace {  // anonymous namespace
 
-struct AutobahnErrorCodesCategory : std::error_category {
+struct autobahn_error_category : std::error_category {
   const char* name() const noexcept override;
   std::string message(int ev) const override;
 };
 
-const char* AutobahnErrorCodesCategory::name() const noexcept {
+const char* autobahn_error_category::name() const noexcept {
   return "autobahn";
 }
 
-std::string AutobahnErrorCodesCategory::message(int ev) const {
-  switch (static_cast<autobahn::ErrorCodes>(ev)) {
-    case autobahn::ErrorCodes::RequestTimeout:
+std::string autobahn_error_category::message(int ev) const {
+  switch (static_cast<autobahn::error_codes>(ev)) {
+    case autobahn::error_codes::request_timeout:
       return "request timed out";
-
+    case autobahn::error_codes::no_client_config:
+      return "no client config";
     default:
       return "(unrecognized error)";
   }
 }
 
-const AutobahnErrorCodesCategory autobahn_error_codes_category{};
+const autobahn_error_category g_autobahn_error_category{};
 
 }  // anonymous namespace
 
 namespace autobahn {
-std::error_code make_error_code(autobahn::ErrorCodes e) {
-  return {static_cast<int>(e), autobahn_error_codes_category};
+std::error_code make_error_code(autobahn::error_codes ec) {
+  return {static_cast<int>(ec), g_autobahn_error_category};
 }
 }  // namespace autobahn
