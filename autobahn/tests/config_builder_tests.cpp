@@ -1,35 +1,38 @@
 // Copyright (c) 2019 by tschokko.de.
 // Author: Tschokko
 
-#include "autobahn/src/config_builder.hpp"
 #include "boost/asio/ip/address_v4.hpp"
 #include "boost/asio/ip/network_v4.hpp"
 #include "gtest/gtest.h"
 
-TEST(openvpn_ConfigBuilder, BuildArgsWithPort_HasPortArg) {
+#include "autobahn/src/openvpn/config.hpp"
+#include "autobahn/src/openvpn/config_builder.hpp"
+
+TEST(openvpn__config_builder, build_args_with_port__has_port_arg) {
   // Arrange
   std::string expected = "--port 1194";
 
-  autobahn::openvpn::ConfigBuilder config;
-  config.SetPort(1194);
+  autobahn::openvpn::config config;
+  config.set_port(1194);
 
   // Act
-  auto actual = config.BuildArgs();
+  auto actual = autobahn::openvpn::config_builder::build_args(config);
 
   // Assert
   ASSERT_EQ(actual.size(), 1);
   EXPECT_EQ(actual[0], expected);
 }
 
-TEST(openvpn_ConfigBuilder, BuildArgsWithProtocol_HasProtocolArg) {
+TEST(openvpn__config_builder,
+     build_args_with_protocol_udp__has_protocol_udp_arg) {
   // Arrange
   std::string expected = "--proto udp";
 
-  autobahn::openvpn::ConfigBuilder config;
-  config.SetProtocol(autobahn::openvpn::kProtocolUDP);
+  autobahn::openvpn::config config;
+  config.set_protocol(autobahn::openvpn::protocols::udp);
 
   // Act
-  auto actual = config.BuildArgs();
+  auto actual = autobahn::openvpn::config_builder::build_args(config);
 
   // Assert
   ASSERT_EQ(actual.size(), 1);

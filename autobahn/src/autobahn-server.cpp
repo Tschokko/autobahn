@@ -23,7 +23,7 @@ void build_client_configs(
   using boost::asio::ip::make_network_v4;
   using boost::asio::ip::make_network_v6;
 
-  autobahn::client_config config;
+  autobahn::openvpn::client_config config;
   config.set_ipv4_interface_config(make_network_v4("10.18.0.3/24"));
   config.set_ipv6_interface_config(make_network_v6("2001:db8:cafe::3/112"));
 

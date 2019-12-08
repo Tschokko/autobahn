@@ -1,8 +1,8 @@
 // Copyright (c) 2019 by tschokko.de.
 // Author: Tschokko
 
-#ifndef AUTOBAHN_SRC_CLIENT_CONFIG_HPP_
-#define AUTOBAHN_SRC_CLIENT_CONFIG_HPP_
+#ifndef AUTOBAHN_SRC_OPENVPN_CLIENT_CONFIG_HPP_
+#define AUTOBAHN_SRC_OPENVPN_CLIENT_CONFIG_HPP_
 
 #include <iostream>
 #include <string>
@@ -13,7 +13,7 @@
 #include "boost/asio/ip/network_v6.hpp"
 #include "boost/move/move.hpp"
 
-namespace autobahn {
+namespace autobahn::openvpn {
 
 using boost::asio::ip::network_v4;
 using boost::asio::ip::network_v6;
@@ -112,7 +112,7 @@ class client_config {
   std::vector<network_v6> ipv6_networks_;
 };
 
-}  // namespace autobahn
+}  // namespace autobahn::openvpn
 
 // #include "client_config.ipp"
-#endif  // AUTOBAHN_SRC_CLIENT_CONFIG_HPP_
+#endif  // AUTOBAHN_SRC_OPENVPN_CLIENT_CONFIG_HPP_

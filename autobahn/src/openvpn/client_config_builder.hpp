@@ -1,8 +1,8 @@
 // Copyright (c) 2019 by tschokko.de.
 // Author: Tschokko
 
-#ifndef AUTOBAHN_SRC_CLIENT_CONFIG_BUILDER_HPP_
-#define AUTOBAHN_SRC_CLIENT_CONFIG_BUILDER_HPP_
+#ifndef AUTOBAHN_SRC_OPENVPN_CLIENT_CONFIG_BUILDER_HPP_
+#define AUTOBAHN_SRC_OPENVPN_CLIENT_CONFIG_BUILDER_HPP_
 
 #include <sstream>
 #include <string>
@@ -14,11 +14,13 @@
 
 #include "client_config.hpp"
 
-namespace autobahn {
+namespace autobahn::openvpn {
+
+using autobahn::openvpn::client_config;
 
 class client_config_builder {
  public:
-  static std::string build(autobahn::client_config const& config) {
+  static std::string build(client_config const& config) {
     std::stringstream ss;
 
     // ifconfig-push
@@ -60,7 +62,7 @@ class client_config_builder {
   }
 };
 
-}  // namespace autobahn
+}  // namespace autobahn::openvpn
 
 // #include "client_config.ipp"
-#endif  // AUTOBAHN_SRC_CLIENT_CONFIG_BUILDER_HPP_
+#endif  // AUTOBAHN_SRC_OPENVPN_CLIENT_CONFIG_BUILDER_HPP_
