@@ -14,6 +14,8 @@
 
 #include "client_config_service.hpp"
 #include "message.hpp"
+#include "openvpn/config.hpp"
+#include "openvpn/process.hpp"
 #include "server_handler.hpp"
 #include "transport.hpp"
 
@@ -31,7 +33,7 @@ void build_client_configs(
 }
 
 int main() {
-  auto context = std::make_shared<zmq::context_t>(1);
+  /*auto context = std::make_shared<zmq::context_t>(1);
   auto transport = std::make_shared<autobahn::zmq_transport>(context);
   auto client_config_service =
       std::make_shared<autobahn::client_config_service>();
@@ -43,7 +45,60 @@ int main() {
   transport->attach(handler);
 
   transport->bind("ipc:///tmp/autobahn");
-  transport->listen();
+  transport->listen();*/
+
+  using autobahn::openvpn::compressions;
+  using autobahn::openvpn::config;
+  using autobahn::openvpn::make_process;
+  using autobahn::openvpn::process;
+  using autobahn::openvpn::protocols;
+  using autobahn::openvpn::topologies;
+
+  using boost::asio::ip::make_network_v4;
+  using boost::asio::ip::make_network_v6;
+
+  config conf;
+  conf.set_port(9443);
+  conf.set_protocol(protocols::tcp_server);
+  conf.set_device("tun");
+  conf.set_topology(topologies::subnet);
+  conf.set_server_ipv4(make_network_v4("100.127.0.0/22"));
+  conf.set_server_ipv6(make_network_v6("2a03:4000:6:11cd:bbbb::/112"));
+
+  conf.set_keep_alive(30, 60);
+  conf.enable_ping_timer_remote();
+  conf.enable_persist_tun();
+  conf.enable_persist_key();
+
+  conf.set_auth("SHA512");
+  conf.set_cipher("AES-256-CBC");
+
+  conf.set_compression(compressions::lzo);
+
+  conf.set_certificate_authority_file(
+      "/home/tlx3m3j/go/src/github.com/tschokko/autobahn/ssl/ca/ca.crt");
+  // c.Set("crl-verify", ca.GetCRLPath())
+  conf.set_certificate_file(
+      "/home/tlx3m3j/go/src/github.com/tschokko/autobahn/ssl/server/"
+      "server.crt");
+  conf.set_private_key_file(
+      "/home/tlx3m3j/go/src/github.com/tschokko/autobahn/ssl/server/"
+      "server.key");
+  conf.set_diffie_hellman_file(
+      "/home/tlx3m3j/go/src/github.com/tschokko/autobahn/ssl/dh2048.pem");
+
+  conf.enable_tls_server();
+  conf.set_tls_authentication_file(
+      "/home/tlx3m3j/go/src/github.com/tschokko/autobahn/ssl/ta.key", 0);
+  conf.set_minimum_tls_version("1.2");
+  conf.set_tls_cipher(
+      "TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256:TLS-ECDHE-ECDSA-WITH-AES-128-GCM-"
+      "SHA256:TLS-ECDHE-RSA-WITH-AES-256-GCM-SHA384:TLS-DHE-RSA-WITH-AES-256-"
+      "CBC-SHA256");
+
+  auto server_process = make_process(std::move(conf));
+  std::error_code ec;
+  server_process.start(ec);
 
   return 0;
 }

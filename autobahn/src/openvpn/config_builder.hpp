@@ -9,8 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "boost/asio/ip/network_v4.hpp"
-#include "boost/asio/ip/network_v6.hpp"
+#include "boost/algorithm/string.hpp"
 
 #include "config.hpp"
 
@@ -21,15 +20,32 @@ using boost::asio::ip::network_v6;
 
 class config_builder {
  public:
-  static std::vector<std::string> build_args(config const& config) {
+  static std::vector<std::string> build_args(config const& conf) {
     std::vector<std::string> args;
-    for (auto const& arg : config.flags_) {
+    for (auto const& arg : conf.flags_) {
       args.push_back("--" + arg);
     }
-    for (const auto& [arg, value] : config.values_) {
+    for (const auto& [arg, value] : conf.values_) {
       args.push_back("--" + arg + " " + value);
     }
     return args;
+  }
+
+  static std::vector<std::string> build_flattened_args(config const& conf) {
+    std::vector<std::string> flattened_args;
+    auto args = build_args(conf);
+    std::stringstream ss;
+
+    for (auto const& arg : args) {
+      ss << arg << " ";
+    }
+
+    auto str = ss.str();
+    boost::algorithm::trim(str);
+    boost::algorithm::split(flattened_args, str, boost::algorithm::is_space(),
+                            boost::algorithm::token_compress_on);
+
+    return flattened_args;
   }
 };
 

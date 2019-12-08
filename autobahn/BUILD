@@ -55,7 +55,9 @@ cc_library(
         ":cppzmq",
         ":libzmq",
         ":msgpack",
+        "@boost//:algorithm",
         "@boost//:asio",
+        "@boost//:process",
     ],
 )
 
