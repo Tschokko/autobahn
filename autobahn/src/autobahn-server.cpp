@@ -84,6 +84,7 @@ autobahn::openvpn::config get_openvpn_config() {
       "SHA256:TLS-ECDHE-RSA-WITH-AES-256-GCM-SHA384:TLS-DHE-RSA-WITH-AES-256-"
       "CBC-SHA256");
 
+  conf.set_value("setenv", "AUTOBAHN_SERVER_ADDRESS ipc:///tmp/autobahn");
   conf.set_value("plugin",
                  "/home/tlx3m3j/src/github.com/tschokko/autobahn-plugin/"
                  "bazel-bin/autobahn/autobahn-plugin.so");

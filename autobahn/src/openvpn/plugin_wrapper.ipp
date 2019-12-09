@@ -40,7 +40,8 @@ inline int plugin_wrapper::open(struct openvpn_plugin_args_open_in const* args,
 
   std::cout << "connect to our server" << std::endl;
   transport_->attach(handler_);
-  transport_->connect("ipc:///tmp/autobahn");
+  transport_->connect(
+      get_env("AUTOBAHN_SERVER_ADDRESS", args->envp));  // "ipc:///tmp/autobahn"
 
   std::cout << "start our listening thread" << std::endl;
   listening_thread_ = std::thread([&] { transport_->listen(); });
@@ -132,23 +133,12 @@ inline int plugin_wrapper::handle_learn_address(
 
   std::error_code ec;
   auto reply = handler_->request_learn_address(
-      autobahn::learn_address_operations_from_string(operation), address,
+      autobahn::learn_address_operation_from_string(operation), address,
       common_name, ec);
 
   if (!reply.learned()) {
     return OPENVPN_PLUGIN_FUNC_ERROR;
   }
-
-  /*size_t i;
-  printf("ARGV\n");
-  for (i = 0; args->argv[i] != NULL; ++i) {
-    printf("%d '%s'\n", (int)i, args->argv[i]);
-  }
-
-  printf("ENVP\n");
-  for (i = 0; args->envp[i] != NULL; ++i) {
-    printf("%d '%s'\n", (int)i, args->envp[i]);
-  }*/
 
   return OPENVPN_PLUGIN_FUNC_SUCCESS;
 }
