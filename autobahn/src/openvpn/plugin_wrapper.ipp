@@ -65,6 +65,7 @@ inline int plugin_wrapper::open(struct openvpn_plugin_args_open_in const* args,
 inline void plugin_wrapper::close() {
   std::cout << "Close" << std::endl;
   transport_->shutdown(10);
+  // Wait for listening thread here! Should work. :)
 }
 
 inline int plugin_wrapper::handle(

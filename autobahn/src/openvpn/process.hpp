@@ -45,7 +45,12 @@ class process {
   }
 
   void shutdown() {
-    child_.terminate();
+    // child_.terminate();
+    // assert(kill(child_.id(), SIGTERM));
+    if (::kill(child_.id(), SIGTERM) == -1) {
+      std::cout << "failed to SIGTERM" << std::endl;
+      child_.terminate();
+    }
   }
 
  private:

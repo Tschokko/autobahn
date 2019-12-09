@@ -91,26 +91,73 @@ autobahn::openvpn::config get_openvpn_config() {
 
   return conf;
 }
+
+class server {
+ public:
+  server() {
+    context_ = std::make_shared<zmq::context_t>(1);
+    transport_ = std::make_shared<autobahn::zmq_transport>(context_);
+    client_config_service_ =
+        std::make_shared<autobahn::client_config_service>();
+    build_client_configs(client_config_service_);
+    handler_ =
+        std::make_shared<autobahn::server_handler>(client_config_service_);
+    server_process_ = std::make_shared<autobahn::openvpn::process>(
+        std::move(get_openvpn_config()));
+  }
+
+  void run() {
+    transport_->attach(handler_);
+    transport_->bind("ipc:///tmp/autobahn");
+    std::thread listening_thread([&] { transport_->listen(); });
+
+    std::thread server_thread([&] {
+      std::error_code ec;
+      server_process_->start(ec);
+    });
+    server_thread.join();
+    std::cout << "server_thread finished" << std::endl;
+
+    transport_->shutdown(10);
+    listening_thread.join();
+    std::cout << "listening_thread finished" << std::endl;
+  }
+
+  void shutdown(int) {
+    std::cout << "SIG RECEIVED----------" << std::endl;
+    server_process_->shutdown();
+  }
+
+ private:
+  std::shared_ptr<zmq::context_t> context_;
+  std::shared_ptr<autobahn::zmq_transport> transport_;
+  std::shared_ptr<autobahn::client_config_service> client_config_service_;
+  std::shared_ptr<autobahn::server_handler> handler_;
+  std::shared_ptr<autobahn::openvpn::process> server_process_;
+};
+
+std::function<void(int)> signal_handler_wrapper;
+void signal_handler_callback(int sig) { signal_handler_wrapper(sig); }
+
 int main() {
-  auto context = std::make_shared<zmq::context_t>(1);
-  auto transport = std::make_shared<autobahn::zmq_transport>(context);
-  auto client_config_service =
-      std::make_shared<autobahn::client_config_service>();
-  build_client_configs(client_config_service);
+  // Declare all our variables
 
-  auto handler =
-      std::make_shared<autobahn::server_handler>(client_config_service);
+  // Install signal handler
+  // std::signal(SIGINT, [] { std::cout << "Stop!" << std::endl; });
 
-  transport->attach(handler);
+  // Setup
+  server srv;
 
-  transport->bind("ipc:///tmp/autobahn");
-  std::thread listening_thread([&] { transport->listen(); });
+  signal_handler_wrapper =
+      std::bind(&server::shutdown, &srv, std::placeholders::_1);
+  struct sigaction sigIntHandler;
+  sigIntHandler.sa_handler = signal_handler_callback;
+  sigemptyset(&sigIntHandler.sa_mask);
+  sigIntHandler.sa_flags = 0;
+  sigaction(SIGINT, &sigIntHandler, NULL);
+  sigaction(SIGTERM, &sigIntHandler, NULL);
 
-
-  auto server_process = std::make_shared<autobahn::openvpn::process>(
-      std::move(get_openvpn_config()));
-  std::error_code ec;
-  server_process->start(ec);
+  srv.run();
 
   return 0;
 }

@@ -97,7 +97,8 @@
         "hash_set": "cpp",
         "rope": "cpp",
         "slist": "cpp",
-        "cfenv": "cpp"
+        "cfenv": "cpp",
+        "*.idl": "cpp"
     },
     "editor.tabSize": 2,
     "editor.tokenColorCustomizations": {
