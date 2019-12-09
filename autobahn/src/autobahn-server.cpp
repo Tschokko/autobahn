@@ -26,27 +26,15 @@ void build_client_configs(
   using boost::asio::ip::make_network_v6;
 
   autobahn::openvpn::client_config config;
-  config.set_ipv4_interface_config(make_network_v4("10.18.0.3/24"));
-  config.set_ipv6_interface_config(make_network_v6("2001:db8:cafe::3/112"));
+  config.set_ipv4_interface_config(make_network_v4("100.127.0.123/22"));
+  config.set_ipv6_interface_config(
+      make_network_v6("2a03:4000:6:11cd:bbbb::1123/112"));
 
-  client_config_service->add_or_update_client_config("test", std::move(config));
+  client_config_service->add_or_update_client_config("client1",
+                                                     std::move(config));
 }
 
-int main() {
-  /*auto context = std::make_shared<zmq::context_t>(1);
-  auto transport = std::make_shared<autobahn::zmq_transport>(context);
-  auto client_config_service =
-      std::make_shared<autobahn::client_config_service>();
-  build_client_configs(client_config_service);
-
-  auto handler =
-      std::make_shared<autobahn::server_handler>(client_config_service);
-
-  transport->attach(handler);
-
-  transport->bind("ipc:///tmp/autobahn");
-  transport->listen();*/
-
+autobahn::openvpn::config get_openvpn_config() {
   using autobahn::openvpn::compressions;
   using autobahn::openvpn::config;
   using autobahn::openvpn::make_process;
@@ -96,9 +84,32 @@ int main() {
       "SHA256:TLS-ECDHE-RSA-WITH-AES-256-GCM-SHA384:TLS-DHE-RSA-WITH-AES-256-"
       "CBC-SHA256");
 
-  auto server_process = make_process(std::move(conf));
+  conf.set_value("plugin",
+                 "/home/tlx3m3j/src/github.com/tschokko/autobahn-plugin/"
+                 "bazel-bin/autobahn/autobahn-plugin.so");
+
+  return conf;
+}
+int main() {
+  auto context = std::make_shared<zmq::context_t>(1);
+  auto transport = std::make_shared<autobahn::zmq_transport>(context);
+  auto client_config_service =
+      std::make_shared<autobahn::client_config_service>();
+  build_client_configs(client_config_service);
+
+  auto handler =
+      std::make_shared<autobahn::server_handler>(client_config_service);
+
+  transport->attach(handler);
+
+  transport->bind("ipc:///tmp/autobahn");
+  std::thread listening_thread([&] { transport->listen(); });
+
+
+  auto server_process = std::make_shared<autobahn::openvpn::process>(
+      std::move(get_openvpn_config()));
   std::error_code ec;
-  server_process.start(ec);
+  server_process->start(ec);
 
   return 0;
 }

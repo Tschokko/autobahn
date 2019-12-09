@@ -4,10 +4,17 @@
 #ifndef AUTOBAHN_PLUGIN_WRAPPER_HPP_
 #define AUTOBAHN_PLUGIN_WRAPPER_HPP_
 
-#include <openvpn-plugin.h>
 #include <memory>
 
-namespace autobahn {
+#include <openvpn/openvpn-plugin.h>
+
+#include "zmq.hpp"
+
+#include "../message.hpp"
+#include "../plugin_handler.hpp"
+#include "../transport.hpp"
+
+namespace autobahn::openvpn {
 
 class plugin_wrapper {
  public:
@@ -22,9 +29,13 @@ class plugin_wrapper {
              struct openvpn_plugin_args_func_return* retptr);
 
  private:
-  // ProxyController controller_;
+  std::shared_ptr<zmq::context_t> context_;
+  std::shared_ptr<autobahn::zmq_transport> transport_;
+  std::shared_ptr<autobahn::plugin_handler> handler_;
+  std::thread listening_thread_;
 
   // PluginHandler() {}
+  const char* get_env(const char* name, const char* envp[]);
 
   int handle_tls_verify(struct openvpn_plugin_args_func_in const* args,
                         struct openvpn_plugin_args_func_return* retptr);
@@ -39,7 +50,7 @@ class plugin_wrapper {
                                struct openvpn_plugin_args_func_return* retptr);
 };
 
-}  // namespace autobahn
+}  // namespace autobahn::openvpn
 
 #include "plugin_wrapper.ipp"
 #endif  // AUTOBAHN_PLUGIN_WRAPPER_HPP_

@@ -1,95 +1,47 @@
-// Copyright (c) 2019 by tschokko.de.
-// Author: Tschokko
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include <iostream>
+#include <memory>
 
-#include "boost/asio.hpp"
-#include "boost/asio/ip/network_v4.hpp"
-#include "boost/asio/ip/network_v6.hpp"
-#include "msgpack.hpp"
-#include "zmq.hpp"
-#include "zmq_addon.hpp"
+#include <openssl/ssl.h>
 
-#include "config_builder.hpp"
-#include "message.hpp"
-#include "plugin_handler.hpp"
-#include "transport.hpp"
+#define ENABLE_CRYPTO 1
+#include <openvpn/openvpn-plugin.h>
 
-namespace autobahn::plugin {
+#include "openvpn/plugin_wrapper.hpp"
 
-int main() {
-  auto context = std::make_shared<zmq::context_t>(1);
-  auto transport = std::make_shared<autobahn::zmq_transport>(context);
-  auto handler = std::make_shared<autobahn::plugin_handler>();
-
-  transport->attach(handler);
-
-  transport->connect("ipc:///tmp/autobahn");
-
-  std::thread listening_thread([&] { transport->listen(); });
-
-  std::error_code client_connect_ec;
-  auto client_connect_reply =
-      handler->request_client_connect("test", client_connect_ec);
-  if (!client_connect_ec) {
-    std::cout << "Request client connect: config="
-              << client_connect_reply.config() << std::endl;
-  } else {
-    std::cerr << client_connect_ec << std::endl;
+OPENVPN_EXPORT int openvpn_plugin_open_v3(
+    const int v3structver, struct openvpn_plugin_args_open_in const *args,
+    struct openvpn_plugin_args_open_return *ret) {
+  // Check that we are API compatible
+  if (v3structver != OPENVPN_PLUGINv3_STRUCTVER) {
+    printf(
+        "log_v3: ** ERROR ** Incompatible plug-in interface between this "
+        "plug-in and OpenVPN\n");
+    return OPENVPN_PLUGIN_FUNC_ERROR;
   }
 
-  std::error_code learn_address_ec;
-  auto learn_address_reply =
-      handler->request_learn_address(autobahn::learn_address_operations::add,
-                                     "10.18.0.3/24", "test", learn_address_ec);
-  if (!learn_address_ec) {
-    std::cout << "Request learn address: learned="
-              << learn_address_reply.learned() << std::endl;
-  } else {
-    std::cerr << learn_address_ec << std::endl;
-  }
+  auto plugin_wrapper = std::make_unique<autobahn::openvpn::plugin_wrapper>();
+  auto rc = plugin_wrapper->open(args, ret);
 
-  transport->shutdown(3);
-  listening_thread.join();
-
-  return 0;
+  // Release our smart pointer und pass it to the openvpn plugin
+  ret->handle =
+      reinterpret_cast<openvpn_plugin_handle_t *>(plugin_wrapper.release());
+  return rc;
 }
 
-}  // namespace autobahn::plugin
+OPENVPN_EXPORT int openvpn_plugin_func_v3(
+    const int version, struct openvpn_plugin_args_func_in const *args,
+    struct openvpn_plugin_args_func_return *retptr) {
+  autobahn::openvpn::plugin_wrapper *plugin_wrapper =
+      reinterpret_cast<autobahn::openvpn::plugin_wrapper *>(args->handle);
+  return plugin_wrapper->handle(args, retptr);
+}
 
-int main() { return autobahn::plugin::main(); }
-
-/*openvpn::ConfigBuilder config;
-
-config.SetPort(9443);
-config.SetProtocol(openvpn::kProtocolTCPServer);
-config.SetDevice("tun");
-config.SetTopology(openvpn::kTopologySubnet);
-config.SetServerIPv4(ip::make_network_v4("100.127.0.0/22"));
-config.SetServerIPv6(ip::make_network_v6("2a03:4000:6:11cd:bbbb::/112"));
-
-config.SetKeepAlive(10, 60);
-config.SetPingTimerRemote();
-config.SetPersistTun();
-config.SetPersistKey();
-
-config.SetAuth("SHA512");
-config.SetCipher("AES-256-CBC");
-config.SetCompression(openvpn::kCompressionLZO);
-
-config.SetCertificateAuthorityFile("./ssl/ca/ca.crt");
-config.SetCertificateFile("./ssl/server/server.crt");
-config.SetPrivateKeyFile("./ssl/server/server.key");
-config.SetDiffieHellmanFile("./ssl/dh2048.pem");
-
-config.SetTLSServer();
-config.SetTLSAuthentication("./ssl/ta.key", 0);
-config.SetTLSVersion("1.2");
-config.SetTLSCipher(
-    "TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256:TLS-ECDHE-ECDSA-WITH-AES-128-GCM-"
-    "SHA256:TLS-ECDHE-RSA-WITH-AES-256-GCM-SHA384:TLS-DHE-RSA-WITH-AES-256-"
-    "CBC-SHA256");
-
-std::cout << "openvpn ";
-for (auto const& arg : config.BuildArgs()) std::cout << arg << " ";
-std::cout << std::endl;*/
+OPENVPN_EXPORT void openvpn_plugin_close_v1(openvpn_plugin_handle_t handle) {
+  autobahn::openvpn::plugin_wrapper *plugin_wrapper =
+      reinterpret_cast<autobahn::openvpn::plugin_wrapper *>(handle);
+  plugin_wrapper->close();
+  delete plugin_wrapper;
+}

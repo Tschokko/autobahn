@@ -40,7 +40,10 @@ cmake_external(
 cc_library(
     name = "autobahn",
     srcs = glob(
-        ["src/**/*.cpp"],
+        [
+            "src/**/*.cpp",
+            "src/**/*.ipp",
+        ],
         exclude = [
             "src/autobahn-plugin.cpp",
             "src/autobahn-server.cpp",
@@ -62,8 +65,8 @@ cc_library(
 )
 
 cc_binary(
-    name = "autobahn-plugin",
-    srcs = ["src/autobahn-plugin.cpp"],
+    name = "autobahn-client",
+    srcs = ["src/autobahn-client.cpp"],
     includes = [":autobahn/include"],
     deps = [
         "//autobahn",
@@ -77,6 +80,16 @@ cc_binary(
     deps = [
         "//autobahn",
         # "@boost//:asio",
+    ],
+)
+
+cc_binary(
+    name = "autobahn-plugin.so",
+    srcs = ["src/autobahn-plugin.cpp"],
+    linkshared = 1,
+    linkstatic = 1,
+    deps = [
+        "//autobahn",
     ],
 )
 

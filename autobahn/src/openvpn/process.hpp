@@ -29,22 +29,28 @@ class process {
     boost::process::ipstream is;
     auto args = config_builder::build_flattened_args(config_);
 
-    boost::process::child c(boost::process::search_path("openvpn"),
-                            std::move(args), boost::process::std_in.close(),
-                            boost::process::std_err > boost::process::null,
-                            boost::process::std_out > is);
+    child_ =
+        boost::process::child(boost::process::search_path("openvpn"),
+                              std::move(args), boost::process::std_in.close(),
+                              boost::process::std_err > boost::process::null,
+                              boost::process::std_out > is);
 
     std::cout << "Starting openvpn..." << std::endl;
 
     std::string line;
-    while (c.running() && std::getline(is, line) && !line.empty())
+    while (child_.running() && std::getline(is, line) && !line.empty())
       std::cout << line << std::endl;
 
-    c.wait();
+    child_.wait();
+  }
+
+  void shutdown() {
+    child_.terminate();
   }
 
  private:
   config config_;
+  boost::process::child child_;
 };
 
 process make_process(config&& conf) { return process(std::move(conf)); }

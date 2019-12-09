@@ -186,6 +186,20 @@ client_connect_reply make_client_connect_reply(int request_id, bool valid,
 
 enum class learn_address_operations : int { add = 1, update = 2, remove = 3 };
 
+learn_address_operations learn_address_operations_from_string(
+    std::string const& str) {
+  if (str == "add") {
+    return learn_address_operations::add;
+  }
+  if (str == "update") {
+    return learn_address_operations::update;
+  }
+  if (str == "remove") {
+    return learn_address_operations::remove;
+  }
+  throw std::logic_error("invalid operations string");
+}
+
 class learn_address_request {
  public:
   explicit learn_address_request(int request_id,
