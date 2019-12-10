@@ -65,6 +65,7 @@ inline int plugin_wrapper::open(struct openvpn_plugin_args_open_in const* args,
 inline void plugin_wrapper::close() {
   std::cout << "Close" << std::endl;
   transport_->shutdown(10);
+  listening_thread_.join();
   // Wait for listening thread here! Should work. :)
 }
 
@@ -109,6 +110,13 @@ inline int plugin_wrapper::handle_client_connect(
   std::error_code ec;
   auto reply = handler_->request_client_connect(common_name, ec);
 
+  if (ec) {
+    std::cout << "failed to request learn address: " << ec.message()
+              << std::endl;
+    return OPENVPN_PLUGIN_FUNC_ERROR;
+  }
+
+  // The client connect request resulted in an invalid / unknown client.
   if (!reply.valid()) {
     return OPENVPN_PLUGIN_FUNC_ERROR;
   }
@@ -137,6 +145,14 @@ inline int plugin_wrapper::handle_learn_address(
       autobahn::learn_address_operation_from_string(operation), address,
       common_name, ec);
 
+  if (ec) {
+    std::cout << "failed to request learn address: " << ec.message()
+              << std::endl;
+    return OPENVPN_PLUGIN_FUNC_ERROR;
+  }
+
+  // The address isn't learned by the controller and we tell that our openvpn
+  // process by returning the error result.
   if (!reply.learned()) {
     return OPENVPN_PLUGIN_FUNC_ERROR;
   }

@@ -12,6 +12,7 @@
 #include "zmq.hpp"
 #include "zmq_addon.hpp"
 
+#include "broker.hpp"
 #include "client_config_service.hpp"
 #include "message.hpp"
 #include "openvpn/config.hpp"
@@ -32,6 +33,14 @@ void build_client_configs(
 
   client_config_service->add_or_update_client_config("client1",
                                                      std::move(config));
+
+  autobahn::openvpn::client_config config2;
+  config2.set_ipv4_interface_config(make_network_v4("100.127.0.124/22"));
+  config2.set_ipv6_interface_config(
+      make_network_v6("2a03:4000:6:11cd:bbbb::1124/112"));
+
+  client_config_service->add_or_update_client_config(
+      "9387c5dd-2810-471f-96f3-8e22b50b01d6", std::move(config2));
 }
 
 autobahn::openvpn::config get_openvpn_config() {
@@ -64,14 +73,15 @@ autobahn::openvpn::config get_openvpn_config() {
   conf.set_compression(compressions::lzo);
 
   conf.set_certificate_authority_file(
-      "/home/tlx3m3j/go/src/github.com/tschokko/autobahn/ssl/ca/ca.crt");
+      "/home/tlx3m3j/go/src/github.com/tschokko/autobahn/spikes/pki/"
+      "root-ca.crt");
   // c.Set("crl-verify", ca.GetCRLPath())
   conf.set_certificate_file(
-      "/home/tlx3m3j/go/src/github.com/tschokko/autobahn/ssl/server/"
-      "server.crt");
+      "/home/tlx3m3j/go/src/github.com/tschokko/autobahn/spikes/pki/"
+      "server1.crt");
   conf.set_private_key_file(
-      "/home/tlx3m3j/go/src/github.com/tschokko/autobahn/ssl/server/"
-      "server.key");
+      "/home/tlx3m3j/go/src/github.com/tschokko/autobahn/spikes/pki/"
+      "server1.key");
   conf.set_diffie_hellman_file(
       "/home/tlx3m3j/go/src/github.com/tschokko/autobahn/ssl/dh2048.pem");
 
@@ -99,21 +109,24 @@ class server {
     transport_ = std::make_shared<autobahn::zmq_transport>(context_);
     client_config_service_ =
         std::make_shared<autobahn::client_config_service>();
+    broker_ = std::make_shared<autobahn::broker>();
     build_client_configs(client_config_service_);
-    handler_ =
-        std::make_shared<autobahn::server_handler>(client_config_service_);
+    handler_ = std::make_shared<autobahn::server_handler>(
+        client_config_service_, broker_);
     server_process_ = std::make_shared<autobahn::openvpn::process>(
         std::move(get_openvpn_config()));
   }
 
   void run() {
+    broker_->connect("nats://localhost:4222");
+
     transport_->attach(handler_);
     transport_->bind("ipc:///tmp/autobahn");
     std::thread listening_thread([&] { transport_->listen(); });
 
     std::thread server_thread([&] {
       std::error_code ec;
-      server_process_->start(ec);
+      server_process_->run(ec);
     });
     server_thread.join();
     std::cout << "server_thread finished" << std::endl;
@@ -132,31 +145,25 @@ class server {
   std::shared_ptr<zmq::context_t> context_;
   std::shared_ptr<autobahn::zmq_transport> transport_;
   std::shared_ptr<autobahn::client_config_service> client_config_service_;
+  std::shared_ptr<autobahn::broker> broker_;
   std::shared_ptr<autobahn::server_handler> handler_;
   std::shared_ptr<autobahn::openvpn::process> server_process_;
 };
 
+// Signal handler
 std::function<void(int)> signal_handler_wrapper;
 void signal_handler_callback(int sig) { signal_handler_wrapper(sig); }
 
 int main() {
-  // Declare all our variables
-
-  // Install signal handler
-  // std::signal(SIGINT, [] { std::cout << "Stop!" << std::endl; });
-
-  // Setup
   server srv;
 
+  // Install our signal handler
   signal_handler_wrapper =
       std::bind(&server::shutdown, &srv, std::placeholders::_1);
-  struct sigaction sigIntHandler;
-  sigIntHandler.sa_handler = signal_handler_callback;
-  sigemptyset(&sigIntHandler.sa_mask);
-  sigIntHandler.sa_flags = 0;
-  sigaction(SIGINT, &sigIntHandler, NULL);
-  sigaction(SIGTERM, &sigIntHandler, NULL);
+  std::signal(SIGINT, signal_handler_callback);
+  std::signal(SIGTERM, signal_handler_callback);
 
+  // Run our server
   srv.run();
 
   return 0;

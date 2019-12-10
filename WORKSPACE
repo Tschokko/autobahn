@@ -50,3 +50,10 @@ http_archive(
     strip_prefix = "msgpack-3.2.0",
     urls = ["https://github.com/msgpack/msgpack-c/releases/download/cpp-3.2.0/msgpack-3.2.0.tar.gz"],
 )
+
+http_archive(
+    name = "natsc",
+    build_file_content = all_content,
+    strip_prefix = "nats.c-2.1.0",
+    urls = ["https://github.com/nats-io/nats.c/archive/v2.1.0.tar.gz"],
+)

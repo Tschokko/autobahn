@@ -25,7 +25,7 @@ class process {
   explicit process(config&& config) : config_(config) {}
   explicit process(config const& config) : config_(config) {}
 
-  void start(std::error_code& ec) {
+  void run(std::error_code& ec) {
     boost::process::ipstream is;
     auto args = config_builder::build_flattened_args(config_);
 
@@ -45,13 +45,13 @@ class process {
   }
 
   void shutdown() {
-    // child_.terminate();
-    // assert(kill(child_.id(), SIGTERM));
     if (::kill(child_.id(), SIGTERM) == -1) {
       std::cout << "failed to SIGTERM" << std::endl;
       child_.terminate();
     }
   }
+
+  void terminate() { child_.terminate(); }
 
  private:
   config config_;

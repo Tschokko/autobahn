@@ -11,6 +11,7 @@
 #include <string>
 #include <tuple>
 
+#include "broker.hpp"
 #include "client_config_service.hpp"
 #include "message.hpp"
 #include "transport.hpp"
@@ -21,8 +22,9 @@ class server_handler : public autobahn::transport_handler,
                        public std::enable_shared_from_this<server_handler> {
  public:
   server_handler(std::shared_ptr<autobahn::client_config_service> const&
-                     client_config_service)
-      : client_config_service_(client_config_service) {}
+                     client_config_service,
+                 std::shared_ptr<autobahn::broker> const& broker)
+      : client_config_service_(client_config_service), broker_(broker) {}
 
   void on_attach(const transport_ptr_t& transport) { transport_ = transport; }
 
@@ -44,6 +46,7 @@ class server_handler : public autobahn::transport_handler,
 
  private:
   std::shared_ptr<autobahn::client_config_service> client_config_service_;
+  std::shared_ptr<autobahn::broker> broker_;
   transport_ptr_t transport_;
 
   void send_message(autobahn::message&& message) {
@@ -76,6 +79,11 @@ class server_handler : public autobahn::transport_handler,
         autobahn::message_subjects::clientconnect, reply);
 
     send_message(std::move(reply_msg));
+
+    // Notify observers that a new client has connected successfully
+    if (valid) {
+      broker_->publish_client_connect(request.common_name());
+    }
   }
 
   void process_learn_address_request(autobahn::message&& message) {
@@ -87,6 +95,11 @@ class server_handler : public autobahn::transport_handler,
         autobahn::message_subjects::learnaddress, reply);
 
     send_message(std::move(reply_msg));
+
+    // Notify observers that we learned an address
+    broker_->publish_learn_address(
+        learn_address_operation_to_string(request.operation()),
+        request.address(), request.common_name());
   }
 };
 

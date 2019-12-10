@@ -17,7 +17,8 @@
         "/home/dgladovic/src/github.com/msgpack/msgpack-3.2.0/include",
         "/home/tlx3m3j/src/github.com/msgpack/msgpack-3.2.0/include",
         "${workspaceFolder}/third_party/boost_1_68_0",
-        "/home/dgladovic/src/boost/boost_1_68_0"
+        "/home/dgladovic/src/boost/boost_1_68_0",
+        "/home/tlx3m3j/src/github.com/tschokko/autobahn-plugin/third_party/nats.c-2.1.0/src"
       ],
       "defines": [],
       "compilerPath": "/usr/bin/gcc",

@@ -37,6 +37,17 @@ cmake_external(
     static_libraries = ["libmsgpackc.a"],
 )
 
+cmake_external(
+    name = "natsc",
+    # Values to be passed as -Dkey=value on the CMake command line;
+    # here are serving to provide some CMake script configuration options
+    cache_entries = {
+        "NATS_BUILD_STREAMING": "OFF",
+    },
+    lib_source = "@natsc//:all",
+    static_libraries = ["libnats_static.a"],
+)
+
 cc_library(
     name = "autobahn",
     srcs = glob(
@@ -58,6 +69,7 @@ cc_library(
         ":cppzmq",
         ":libzmq",
         ":msgpack",
+        ":natsc",
         "@boost//:algorithm",
         "@boost//:asio",
         "@boost//:process",
@@ -68,6 +80,10 @@ cc_binary(
     name = "autobahn-client",
     srcs = ["src/autobahn-client.cpp"],
     includes = [":autobahn/include"],
+    linkopts = [
+        "-lcrypto",
+        "-lssl",
+    ],
     deps = [
         "//autobahn",
         # "@boost//:asio",
@@ -77,6 +93,10 @@ cc_binary(
 cc_binary(
     name = "autobahn-server",
     srcs = ["src/autobahn-server.cpp"],
+    linkopts = [
+        "-lcrypto",
+        "-lssl",
+    ],
     deps = [
         "//autobahn",
         # "@boost//:asio",
@@ -86,6 +106,10 @@ cc_binary(
 cc_binary(
     name = "autobahn-plugin.so",
     srcs = ["src/autobahn-plugin.cpp"],
+    linkopts = [
+        "-lcrypto",
+        "-lssl",
+    ],
     linkshared = 1,
     linkstatic = 1,
     deps = [

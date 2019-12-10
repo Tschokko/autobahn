@@ -194,13 +194,25 @@ learn_address_operations learn_address_operation_from_string(
   if (str == "update") {
     return learn_address_operations::update;
   }
-  if (str == "remove") {
+  if (str == "delete") {
     return learn_address_operations::remove;
   }
 
   // This should never happen inside a OpenVPN plugin. It's fine to crash the
   // plugin if we receive an invalid string.
   throw std::logic_error("invalid operations string");
+}
+
+std::string learn_address_operation_to_string(
+    learn_address_operations operation) {
+  switch (operation) {
+    case learn_address_operations::add:
+      return "add";
+    case learn_address_operations::update:
+      return "update";
+    case learn_address_operations::remove:
+      return "delete";
+  }
 }
 
 class learn_address_request {
@@ -238,6 +250,8 @@ class learn_address_request {
 
   // accessors & mutators
   int request_id() const { return request_id_; }
+  learn_address_operations operation() const { return operation_; }
+  std::string address() const { return address_; }
   std::string common_name() const { return common_name_; }
 
  private:
