@@ -27,13 +27,14 @@ class process {
 
   void run(std::error_code& ec) {
     boost::process::ipstream is;
+    boost::process::ipstream is_stderr;
     auto args = config_builder::build_flattened_args(config_);
 
-    child_ =
-        boost::process::child(boost::process::search_path("openvpn"),
-                              std::move(args), boost::process::std_in.close(),
-                              boost::process::std_err > boost::process::null,
-                              boost::process::std_out > is);
+    child_ = boost::process::child(
+        boost::process::search_path("openvpn"), std::move(args),
+        boost::process::std_in.close(),
+        boost::process::std_err > is_stderr,  // boost::process::null,
+        boost::process::std_out > is);
 
     std::cout << "Starting openvpn..." << std::endl;
 
@@ -42,6 +43,10 @@ class process {
       std::cout << line << std::endl;
 
     child_.wait();
+
+    std::cout << "Exiting openvpn process..." << std::endl;
+    while (std::getline(is_stderr, line) && !line.empty())
+      std::cout << line << std::endl;
   }
 
   void shutdown() {

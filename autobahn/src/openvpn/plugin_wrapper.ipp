@@ -136,9 +136,13 @@ inline int plugin_wrapper::handle_learn_address(
     struct openvpn_plugin_args_func_return* retptr) {
   std::cout << "handle_learn_address" << std::endl;
 
-  std::string operation = args->argv[1];
-  std::string address = args->argv[2];
-  std::string common_name = args->argv[3];
+  std::string operation;
+  if (args->argv[1] != NULL) operation = args->argv[1];
+  std::string address;
+  if (args->argv[2] != NULL) address = args->argv[2];
+  std::string common_name;
+  if (args->argv[3] != NULL) common_name = args->argv[3];
+
 
   std::error_code ec;
   auto reply = handler_->request_learn_address(

@@ -8,7 +8,7 @@
 #include <memory>
 #include <sstream>
 
-#include "nats.h"
+#include "nats/nats.h"
 
 namespace autobahn {
 
@@ -30,6 +30,14 @@ class broker {
   void publish_client_connect(std::string const& common_name) {
     auto status = natsConnection_PublishString(
         conn_.get(), "autobahn.clientconnect", common_name.c_str());
+    if (status != NATS_OK) {
+      throw std::runtime_error("failed to publish message");
+    }
+  }
+
+  void publish_client_disconnect(std::string const& common_name) {
+    auto status = natsConnection_PublishString(
+        conn_.get(), "autobahn.clientdisconnect", common_name.c_str());
     if (status != NATS_OK) {
       throw std::runtime_error("failed to publish message");
     }

@@ -213,6 +213,8 @@ std::string learn_address_operation_to_string(
     case learn_address_operations::remove:
       return "delete";
   }
+
+  throw std::logic_error("invalid operations");
 }
 
 class learn_address_request {

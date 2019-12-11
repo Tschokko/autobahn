@@ -115,7 +115,7 @@ class zmq_transport : public transport,
 
           std::cerr << "Recv Message: message_type="
                     << static_cast<int>(message_type) << ", subject=" << subject
-                    << std::endl;
+                    << " data=[" << data << "]" << std::endl;
 
           if (handler_) {
             handler_->on_message(

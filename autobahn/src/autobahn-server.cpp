@@ -41,6 +41,14 @@ void build_client_configs(
 
   client_config_service->add_or_update_client_config(
       "9387c5dd-2810-471f-96f3-8e22b50b01d6", std::move(config2));
+
+  autobahn::openvpn::client_config config3;
+  config3.set_ipv4_interface_config(make_network_v4("100.127.0.125/22"));
+  config3.set_ipv6_interface_config(
+      make_network_v6("2a03:4000:6:11cd:bbbb::1125/112"));
+
+  client_config_service->add_or_update_client_config(
+      "6bb909bb-6cc6-4312-81ed-8d1d91d41f16", std::move(config3));
 }
 
 autobahn::openvpn::config get_openvpn_config() {
@@ -72,22 +80,14 @@ autobahn::openvpn::config get_openvpn_config() {
 
   conf.set_compression(compressions::lzo);
 
-  conf.set_certificate_authority_file(
-      "/home/tlx3m3j/go/src/github.com/tschokko/autobahn/spikes/pki/"
-      "root-ca.crt");
+  conf.set_certificate_authority_file("./ssl/root-ca.crt");
   // c.Set("crl-verify", ca.GetCRLPath())
-  conf.set_certificate_file(
-      "/home/tlx3m3j/go/src/github.com/tschokko/autobahn/spikes/pki/"
-      "server1.crt");
-  conf.set_private_key_file(
-      "/home/tlx3m3j/go/src/github.com/tschokko/autobahn/spikes/pki/"
-      "server1.key");
-  conf.set_diffie_hellman_file(
-      "/home/tlx3m3j/go/src/github.com/tschokko/autobahn/ssl/dh2048.pem");
+  conf.set_certificate_file("./ssl/server1.crt");
+  conf.set_private_key_file("./ssl/server1.key");
+  conf.set_diffie_hellman_file("./ssl/dh2048.pem");
 
   conf.enable_tls_server();
-  conf.set_tls_authentication_file(
-      "/home/tlx3m3j/go/src/github.com/tschokko/autobahn/ssl/ta.key", 0);
+  conf.set_tls_authentication_file("./ssl/ta.key", 0);
   conf.set_minimum_tls_version("1.2");
   conf.set_tls_cipher(
       "TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256:TLS-ECDHE-ECDSA-WITH-AES-128-GCM-"
@@ -95,9 +95,7 @@ autobahn::openvpn::config get_openvpn_config() {
       "CBC-SHA256");
 
   conf.set_value("setenv", "AUTOBAHN_SERVER_ADDRESS ipc:///tmp/autobahn");
-  conf.set_value("plugin",
-                 "/home/tlx3m3j/src/github.com/tschokko/autobahn-plugin/"
-                 "bazel-bin/autobahn/autobahn-plugin.so");
+  conf.set_value("plugin", "./bazel-bin/autobahn/autobahn-plugin.so");
 
   return conf;
 }
