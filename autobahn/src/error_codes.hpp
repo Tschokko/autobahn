@@ -10,8 +10,13 @@ namespace autobahn {
 enum class error_codes {
   // no 0
   request_timeout = 1,  // The request timed out
+
   // server controller errors
   no_client_config = 1000,
+
+  // plugin errors
+  plugin_controller_unreachable = 2000,
+  plugin_controller_gone = 2001,
 };
 }  // namespace autobahn
 

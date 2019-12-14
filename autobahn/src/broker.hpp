@@ -8,7 +8,7 @@
 #include <memory>
 #include <sstream>
 
-#include "nats/nats.h"
+#include "nats.h"
 
 namespace autobahn {
 

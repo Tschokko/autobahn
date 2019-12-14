@@ -53,11 +53,10 @@ void build_client_configs(
   autobahn::openvpn::client_config config4;
   config4.set_ipv4_interface_config(make_network_v4("100.127.0.126/22"));
   config4.set_ipv6_interface_config(
-		            make_network_v6("2a03:4000:6:11cd:bbbb::1126/112"));
+      make_network_v6("2a03:4000:6:11cd:bbbb::1126/112"));
 
   client_config_service->add_or_update_client_config(
-			      "45e09e0e-ee6b-4972-a675-a8b1e99b042b", std::move(config4));
-
+      "45e09e0e-ee6b-4972-a675-a8b1e99b042b", std::move(config4));
 }
 
 autobahn::openvpn::config get_openvpn_config() {

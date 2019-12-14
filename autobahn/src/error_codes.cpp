@@ -22,6 +22,10 @@ std::string autobahn_error_category::message(int ev) const {
       return "request timed out";
     case autobahn::error_codes::no_client_config:
       return "no client config";
+    case autobahn::error_codes::plugin_controller_unreachable:
+      return "plugin controller unreachable";
+    case autobahn::error_codes::plugin_controller_gone:
+      return "plugin controller gone";
     default:
       return "(unrecognized error)";
   }
