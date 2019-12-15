@@ -103,7 +103,7 @@ autobahn::openvpn::config get_openvpn_config() {
       "CBC-SHA256");
 
   conf.set_value("setenv", "AUTOBAHN_SERVER_ADDRESS ipc:///tmp/autobahn");
-  conf.set_value("plugin", "./bazel-bin/autobahn/autobahn-plugin.so");
+  conf.set_value("plugin", "./bin/libautobahn-plugin.so");
 
   return conf;
 }

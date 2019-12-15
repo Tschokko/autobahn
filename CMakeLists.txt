@@ -25,6 +25,10 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g")
 
 # Source files
 file(GLOB SOURCES "autobahn/src/*.cpp")
+LIST(REMOVE_ITEM SOURCES
+  ${CMAKE_CURRENT_SOURCE_DIR}/autobahn/src/autobahn-server.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/autobahn/src/autobahn-plugin.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/autobahn/src/autobahn-client.cpp)
 
 #set(Boost_INCLUDE_DIRS "third_party/boost_1_68_0")
 #set(Boost_LIBRARY_DIRS "third_party/boost_1_68_0/libs")
@@ -99,6 +103,10 @@ add_dependencies(libnats nats)
 set_property(TARGET libnats PROPERTY IMPORTED_LOCATION  ${CMAKE_CURRENT_BINARY_DIR}/third_party/nats/src/nats-build/src/libnats_static.a)
 
 # Build autobahn-server
-add_executable(autobahn-server "autobahn/src/autobahn-server.cpp")
+add_executable(autobahn-server "autobahn/src/autobahn-server.cpp" ${SOURCES})
 # add_dependencies(autobahn-server zeromq cppzmq nats)
 target_link_libraries(autobahn-server libmsgpack libzmq libnats pthread crypto ssl ${Boost_LIBRARIES})
+
+# Build autobahn-plugin
+add_library(autobahn-plugin SHARED "autobahn/src/autobahn-plugin.cpp" ${SOURCES})
+target_link_libraries(autobahn-plugin libmsgpack libzmq pthread crypto ssl ${Boost_LIBRARIES})
