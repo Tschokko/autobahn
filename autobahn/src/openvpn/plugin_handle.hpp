@@ -19,6 +19,17 @@ namespace autobahn::openvpn {
 
 class plugin_handle {
  public:
+  typedef plugin<plugin_handle>::event_result_t event_result_t;
+  typedef plugin<plugin_handle>::string_map_t string_map_t;
+  typedef plugin<plugin_handle>::arg_list_t arg_list_t;
+  typedef plugin<plugin_handle>::env_map_t env_map_t;
+
+  inline static event_result_t make_event_result(
+      plugin_results result, string_map_t&& string_map = {}) {
+    return plugin<plugin_handle>::make_event_result(result,
+                                                    std::move(string_map));
+  }
+
   plugin_handle() {
     std::cout << "[autobahn-plugin] plugin_handle ctor called" << std::endl;
   }
@@ -39,31 +50,28 @@ class plugin_handle {
 
   // client_connect is called by the plugin to handle the OpenVPN client connect
   // event
-  plugin_event_result_t client_connect(plugin_arg_list_t const& args,
-                                       plugin_env_map_t const& env,
-                                       std::error_code& ec) const {
-    plugin_string_map_t values;
+  event_result_t client_connect(arg_list_t const& args, env_map_t const& env,
+                                std::error_code& ec) const {
+    string_map_t values;
     values["config"] =
         "ifconfig-push 100.127.0.100 255.255.252.0\nifconfig-ipv6-push "
         "2a03:4000:6:11cd:bbbb::1100/112";
 
-    return make_plugin_event_result(plugin_results::success, std::move(values));
+    return make_event_result(plugin_results::success, std::move(values));
   }
 
   // client_disconnect is called by the plugin to handle the OpenVPN client
   // disconnect event
-  plugin_event_result_t client_disconnect(plugin_arg_list_t const& args,
-                                          plugin_env_map_t const& env,
-                                          std::error_code& ec) const {
-    return make_plugin_event_result(plugin_results::success);
+  event_result_t client_disconnect(arg_list_t const& args, env_map_t const& env,
+                                   std::error_code& ec) const {
+    return make_event_result(plugin_results::success);
   }
 
   // learn_address is called by the plugin to handle the OpenVPN learn address
   // event
-  plugin_event_result_t learn_address(plugin_arg_list_t const& args,
-                                      plugin_env_map_t const& env,
-                                      std::error_code& ec) const {
-    return make_plugin_event_result(plugin_results::success);
+  event_result_t learn_address(arg_list_t const& args, env_map_t const& env,
+                               std::error_code& ec) const {
+    return make_event_result(plugin_results::success);
   }
 };
 

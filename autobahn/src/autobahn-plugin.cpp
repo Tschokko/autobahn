@@ -14,8 +14,6 @@
 #include "openvpn/plugin_handle.hpp"
 #include "openvpn/plugin_types.hpp"
 
-using autobahn::openvpn::plugin_arg_list_t;
-using autobahn::openvpn::plugin_env_map_t;
 using autobahn::openvpn::plugin_events;
 
 // typedef plugin<plugin_handle> plugin;
@@ -23,8 +21,8 @@ class plugin
     : public autobahn::openvpn::plugin<autobahn::openvpn::plugin_handle> {};
 
 // Convert the OpenVPN plugin argv items to a C++ vector.
-static inline plugin_arg_list_t i_get_args(const char *argv[]) {
-  plugin_arg_list_t args;
+inline static plugin::arg_list_t i_get_args(const char *argv[]) {
+  plugin::arg_list_t args;
   for (int i = 0; argv[i] != NULL; i++) {
     std::string arg{argv[i]};
     args.push_back(std::move(arg));
@@ -33,8 +31,8 @@ static inline plugin_arg_list_t i_get_args(const char *argv[]) {
 }
 
 // Convert the OpenVPN plugin envp items to a C++ map.
-static inline plugin_env_map_t i_get_env(const char *envp[]) {
-  plugin_env_map_t env;
+inline static plugin::env_map_t i_get_env(const char *envp[]) {
+  plugin::env_map_t env;
   if (envp) {
     for (int i = 0; envp[i] != NULL; i++) {
       std::string s{envp[i]};

@@ -25,23 +25,11 @@ enum class plugin_events : int {
   n = OPENVPN_PLUGIN_N,
 };
 
-typedef std::vector<plugin_events> plugin_event_list_t;
-
 enum class plugin_results : int {
   success = OPENVPN_PLUGIN_FUNC_SUCCESS,
   failure = OPENVPN_PLUGIN_FUNC_ERROR,
   deferred = OPENVPN_PLUGIN_FUNC_DEFERRED,
 };
-
-typedef std::vector<std::string> plugin_arg_list_t;
-typedef std::map<std::string, std::string> plugin_env_map_t;
-typedef std::map<std::string, std::string> plugin_string_map_t;
-typedef std::tuple<plugin_results, plugin_string_map_t> plugin_event_result_t;
-
-inline plugin_event_result_t make_plugin_event_result(
-    plugin_results result, plugin_string_map_t&& string_map = {}) {
-  return std::make_tuple<>(result, std::move(string_map));
-}
 
 }  // namespace autobahn::openvpn
 

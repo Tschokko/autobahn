@@ -18,27 +18,43 @@ namespace autobahn::openvpn {
 template <class H>
 class plugin {
  public:
+  typedef std::vector<plugin_events> event_list_t;
   typedef H handle_t;
+  typedef std::tuple<event_list_t, std::unique_ptr<H>> open_result_t;
+  typedef std::vector<std::string> arg_list_t;
+  typedef std::map<std::string, std::string> env_map_t;
+  typedef std::map<std::string, std::string> string_map_t;
+  typedef std::tuple<plugin_results, string_map_t> event_result_t;
+
+  inline static open_result_t make_open_result(event_list_t event_list,
+                                               std::unique_ptr<H> ptr) {
+    return std::make_tuple<>(std::move(event_list), std::move(ptr));
+  }
+
+  inline static event_result_t make_event_result(
+      plugin_results result, string_map_t&& string_map = {}) {
+    return std::make_tuple<>(result, std::move(string_map));
+  }
 
   // open is call when the plugin is started by the OpenVPN process
-  static std::tuple<plugin_event_list_t, std::unique_ptr<H>> open(
-      plugin_arg_list_t const& args, plugin_env_map_t const& env,
-      std::error_code& ec) {
+  // std::tuple<event_list_t, std::unique_ptr<H>>
+  inline static open_result_t open(arg_list_t const& args, env_map_t const& env,
+                                   std::error_code& ec) {
     // Define the OpenVPN events we want to listen for
-    auto events = plugin_event_list_t{plugin_events::client_disconnect,
-                                      plugin_events::learn_address,
-                                      plugin_events::client_connect_v2};
+    auto events = event_list_t{plugin_events::client_disconnect,
+                               plugin_events::learn_address,
+                               plugin_events::client_connect_v2};
 
     // Create a new plugin handle and initialize it. If an error code is set,
     // the plugin fails to start and the OpenVPN process will stop immediately.
     auto handle = std::make_unique<H>();
     handle->init(ec);
 
-    return std::make_tuple<>(std::move(events), std::move(handle));
+    return make_open_result(std::move(events), std::move(handle));
   }
 
   // close is called when the OpenVPN process is about to stop
-  static void close(handle_t* const& handle, std::error_code& ec) {
+  inline static void close(handle_t* const& handle, std::error_code& ec) {
     handle->tear_down(ec);
   }
 
@@ -48,9 +64,9 @@ class plugin {
   // fails and the OpenVPN process will terminate. Only properly registered
   // events are handled by this routine. If an error occurs during processing
   // the event, it will be only logged to stdout.
-  static plugin_event_result_t handle_event(plugin_events event,
-                                            plugin_arg_list_t const& args,
-                                            plugin_env_map_t const& env,
+  inline static event_result_t handle_event(plugin_events event,
+                                            arg_list_t const& args,
+                                            env_map_t const& env,
                                             handle_t* const& handle,
                                             std::error_code& ec) {
     switch (event) {
