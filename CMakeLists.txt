@@ -30,15 +30,31 @@ LIST(REMOVE_ITEM SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/autobahn/src/autobahn-plugin.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/autobahn/src/autobahn-client.cpp)
 
-#set(Boost_INCLUDE_DIRS "third_party/boost_1_68_0")
-#set(Boost_LIBRARY_DIRS "third_party/boost_1_68_0/libs")
-#find_package(Boost 1.68 REQUIRED COMPONENTS algorithm asio process)
-include(boost.cmake)
+# Dependency boost 1.68
+#include(boost)
+set(Boost_URL "https://dl.bintray.com/boostorg/release/1.68.0/source/boost_1_68_0.tar.gz")
+set(Boost_INSTALL ${CMAKE_CURRENT_BINARY_DIR}/third_party/boost)
+set(Boost_INCLUDE_DIR ${Boost_INSTALL}/include)
+set(Boost_LIB_DIR ${Boost_INSTALL}/lib)
+
+ExternalProject_Add(boost
+        PREFIX ${CMAKE_CURRENT_BINARY_DIR}/third_party/boost
+        URL ${Boost_URL}
+        # URL_HASH SHA1=${boost_SHA1}
+        BUILD_IN_SOURCE 1
+        CONFIGURE_COMMAND
+        ./bootstrap.sh
+        --with-libraries=system
+        --with-libraries=filesystem
+        --prefix=<INSTALL_DIR>
+        BUILD_COMMAND
+        ./b2 install link=static variant=release threading=multi runtime-link=static
+        INSTALL_COMMAND ""
+        INSTALL_DIR ${Boost_INSTALL})
+set(Boost_LIBRARIES
+        ${Boost_LIB_DIR}/libboost_filesystem.a
+        ${Boost_LIB_DIR}/libboost_system.a )
 include_directories(${Boost_INCLUDE_DIR})
-#include_directories(${MSGPACK_INCLUDE_DIR})
-#include_directories(${ZeroMQ_INCLUDE_DIR})
-#include_directories(${CppZMQ_INCLUDE_DIR})
-#include_directories(${NATS_INCLUDE_DIR})
 
 # msgpack dependency
 ExternalProject_Add(msgpack
@@ -66,13 +82,14 @@ ExternalProject_Add(zeromq
                   -DZMQ_BUILD_TESTS=OFF
     INSTALL_COMMAND ""
 )
-set(ZEROMQ_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/third_party/zeromq/include)
+set(ZEROMQ_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/third_party/zeromq/src/zeromq/include)
 include_directories(${ZEROMQ_INCLUDE_DIR})
 add_library(libzmq STATIC IMPORTED)
 add_dependencies(libzmq zeromq)
 set_property(TARGET libzmq PROPERTY IMPORTED_LOCATION  ${CMAKE_CURRENT_BINARY_DIR}/third_party/zeromq/src/zeromq-build/lib/libzmq.a)
+set(ZEROMQ_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/third_party/zeromq/src/zeromq-build)
 
-# cppzmq dependency
+# Dependency cppzmq 
 ExternalProject_Add(cppzmq
     DEPENDS libzmq
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/third_party/cppzmq
@@ -80,6 +97,8 @@ ExternalProject_Add(cppzmq
     GIT_TAG "v4.5.0"
     CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
                   -DCPPZMQ_BUILD_TESTS=OFF
+                  -DZeroMQ_DIR=${ZEROMQ_BUILD_DIR}
+                  -DZeroMQ_INCLUDE_DIR=${ZEROMQ_INCLUDE_DIR}
     INSTALL_COMMAND ""
 )
 set(CPPZMQ_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/third_party/cppzmq/src/cppzmq)
@@ -104,9 +123,10 @@ set_property(TARGET libnats PROPERTY IMPORTED_LOCATION  ${CMAKE_CURRENT_BINARY_D
 
 # Build autobahn-server
 add_executable(autobahn-server "autobahn/src/autobahn-server.cpp" ${SOURCES})
-# add_dependencies(autobahn-server zeromq cppzmq nats)
+add_dependencies(autobahn-server cppzmq boost)
 target_link_libraries(autobahn-server libmsgpack libzmq libnats pthread crypto ssl ${Boost_LIBRARIES})
 
 # Build autobahn-plugin
 add_library(autobahn-plugin SHARED "autobahn/src/autobahn-plugin.cpp" ${SOURCES})
+add_dependencies(autobahn-plugin cppzmq boost)
 target_link_libraries(autobahn-plugin libmsgpack libzmq pthread crypto ssl ${Boost_LIBRARIES})

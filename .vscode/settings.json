@@ -123,6 +123,6 @@
     ]
 },
 "editor.fontFamily": "'Ubuntu Mono', 'Fira Code', 'Hack','Ubuntu Mono', 'Droid Sans Mono', monospace,'Droid Sans Fallback'",
-"editor.fontSize": 15,
+"editor.fontSize": 16,
 "terminal.integrated.fontSize": 15
 }
