@@ -1,9 +1,10 @@
 # Defines the Google C++ style for automatic reformatting.
 # http://clang.llvm.org/docs/ClangFormatStyleOptions.html
-BasedOnStyle: Google
+BasedOnStyle: LLVM
 Language: Cpp
 Standard: Cpp11
 MaxEmptyLinesToKeep: 2
 UseTab: false
-IndentWidth: 2
-ColumnLimit: 80
+IndentWidth: 4
+ColumnLimit: 100
+BreakBeforeBraces: Stroustrup

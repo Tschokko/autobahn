@@ -100,7 +100,6 @@
     "cfenv": "cpp",
     "*.idl": "cpp"
   },
-  "editor.tabSize": 2,
   "editor.tokenColorCustomizations": {
     "textMateRules": [
       {
