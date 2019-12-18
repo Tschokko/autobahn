@@ -39,13 +39,13 @@ class Plugin {
     // set, the plugin fails to start and the OpenVPN process will stop
     // immediately.
     auto handle = MakeHandlePtr();
-    handle->init(std::move(env), ec);
+    handle->Init(std::move(env), ec);
 
     return MakeOpenResult(std::move(events), std::move(handle));
   }
 
   // close is called when the OpenVPN process is about to stop
-  static void Close(HandleType *const &handle, std::error_code &ec) { handle->tear_down(ec); }
+  static void Close(HandleType *const &handle, std::error_code &ec) { handle->TearDown(ec); }
 
   // handle_event is called when an OpenVPN event occurs. If we receive an
   // unregistered event (see method open) we raise an exception. If we receive
@@ -78,13 +78,13 @@ class Plugin {
         throw std::logic_error("received unregistered plugin event CLIENT_CONNECT");
       }
       case plugin_events::client_disconnect: {
-        return handle->client_disconnect(std::move(args), std::move(env), ec);
+        return handle->HandleClientDisconnect(std::move(args), std::move(env), ec);
       }
       case plugin_events::learn_address: {
-        return handle->learn_address(std::move(args), std::move(env), ec);
+        return handle->HandleLearnAddress(std::move(args), std::move(env), ec);
       }
       case plugin_events::client_connect_v2: {
-        return handle->client_connect(std::move(args), std::move(env), ec);
+        return handle->HandleClientConnect(std::move(args), std::move(env), ec);
       }
       case plugin_events::tls_final: {
         throw std::logic_error("received unregistered plugin event TLS_FINAL");

@@ -125,5 +125,6 @@
   "editor.fontFamily": "'Ubuntu Mono', 'Fira Code', 'Hack','Ubuntu Mono', 'Droid Sans Mono', monospace,'Droid Sans Fallback'",
   "editor.fontSize": 16,
   "editor.rulers": [100, 120],
-  "terminal.integrated.fontSize": 16
+  "terminal.integrated.fontSize": 16,
+  "C_Cpp.intelliSenseCacheSize": 0
 }

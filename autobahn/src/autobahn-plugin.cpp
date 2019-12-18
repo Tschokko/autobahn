@@ -22,7 +22,7 @@ using autobahn::openvpn::plugin_events;
 // typedef plugin<plugin_handle> plugin;
 // class plugin : public autobahn::openvpn::plugin<autobahn::openvpn::plugin_handle> {
 // };
-using PluginImpl = autobahn::openvpn::Plugin<autobahn::openvpn::plugin_handle>;
+using PluginImpl = autobahn::openvpn::Plugin<autobahn::openvpn::PluginHandle>;
 using ArgList = PluginImpl::ArgList;
 using EnvMap = PluginImpl::EnvMap;
 

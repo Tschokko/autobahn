@@ -22,42 +22,40 @@
 
 namespace autobahn::openvpn {
 
-class plugin_handle {
+class PluginHandle {
  public:
-  typedef plugin_handle type;
-  typedef Plugin<type>::EventResult event_result_t;
-  typedef Plugin<type>::StringMap string_map_t;
-  typedef Plugin<type>::ArgList arg_list_t;
-  // typedef plugin<type>::env_map_t env_map_t;
-  using env_map_t = Plugin<type>::EnvMap;
-  using service_stub_ptr_t = std::unique_ptr<plugin_service_stub>;
+  typedef Plugin<PluginHandle>::EventResult EventResult;
+  typedef Plugin<PluginHandle>::StringMap StringMap;
+  typedef Plugin<PluginHandle>::ArgList ArgList;
+  typedef Plugin<PluginHandle>::EnvMap EnvMap;
+  typedef std::unique_ptr<plugin_service_stub> ServiceStubPtr;
 
-  plugin_handle();
-  ~plugin_handle();
+  PluginHandle();
+  ~PluginHandle();
 
-  void init(plugin_handle::env_map_t &&env, std::error_code &ec);
-  void tear_down(std::error_code &ec);
+  void Init(EnvMap &&env, std::error_code &ec);
+  void TearDown(std::error_code &ec);
 
   // client_connect is called by the plugin to handle the OpenVPN client connect event
-  event_result_t client_connect(arg_list_t &&args, env_map_t &&env, std::error_code &ec) const;
+  EventResult HandleClientConnect(ArgList &&args, EnvMap &&env, std::error_code &ec) const;
 
   // client_disconnect is called by the plugin to handle the OpenVPN client
   // disconnect event
-  event_result_t client_disconnect(arg_list_t &&args, env_map_t &&env, std::error_code &ec) const;
+  EventResult HandleClientDisconnect(ArgList &&args, EnvMap &&env, std::error_code &ec) const;
 
   // learn_address is called by the plugin to handle the OpenVPN learn address
   // event
-  event_result_t learn_address(arg_list_t &&args, env_map_t &&env, std::error_code &ec) const;
+  EventResult HandleLearnAddress(ArgList &&args, EnvMap &&env, std::error_code &ec) const;
 
  private:
   std::shared_ptr<zmq::context_t> context_;
   std::shared_ptr<autobahn::zmq_transport> transport_;
   std::shared_ptr<autobahn::plugin_handler> handler_;
   std::thread listening_thread_;
-  service_stub_ptr_t service_;
+  ServiceStubPtr service_;
 
-  // Utility method to create a proper event_result_t value
-  static event_result_t make_event_result(plugin_results result, string_map_t &&string_map = {});
+  // Utility method to create a proper EventResult value
+  static EventResult MakeEventResult(plugin_results result, StringMap &&string_map = {});
 };
 
 }  // namespace autobahn::openvpn
