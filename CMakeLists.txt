@@ -46,14 +46,25 @@ ExternalProject_Add(boost
         ./bootstrap.sh
         --with-libraries=system
         --with-libraries=filesystem
+        --with-libraries=thread
         --prefix=<INSTALL_DIR>
         BUILD_COMMAND
-        ./b2 install link=static variant=release threading=multi runtime-link=static
+        ./b2 install link=shared variant=release threading=multi runtime-link=shared
         INSTALL_COMMAND ""
         INSTALL_DIR ${Boost_INSTALL})
 set(Boost_LIBRARIES
         ${Boost_LIB_DIR}/libboost_filesystem.a
-        ${Boost_LIB_DIR}/libboost_system.a )
+        ${Boost_LIB_DIR}/libboost_system.a
+        ${Boost_LIB_DIR}/libboost_thread.a )
+add_library(libboost_filesystem SHARED IMPORTED)
+add_dependencies(libboost_filesystem boost)
+set_property(TARGET libboost_filesystem PROPERTY IMPORTED_LOCATION ${Boost_LIB_DIR}/libboost_filesystem.so)    
+add_library(libboost_system SHARED IMPORTED)
+add_dependencies(libboost_system boost)
+set_property(TARGET libboost_system PROPERTY IMPORTED_LOCATION ${Boost_LIB_DIR}/libboost_system.so)    
+add_library(libboost_thread SHARED IMPORTED)
+add_dependencies(libboost_thread boost)
+set_property(TARGET libboost_thread PROPERTY IMPORTED_LOCATION ${Boost_LIB_DIR}/libboost_thread.so)    
 include_directories(${Boost_INCLUDE_DIR})
 
 # msgpack dependency
@@ -69,9 +80,9 @@ ExternalProject_Add(msgpack
 )
 set(MSGPACK_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/third_party/msgpack/src/msgpack/include)
 include_directories(${MSGPACK_INCLUDE_DIR})
-add_library(libmsgpack STATIC IMPORTED)
+add_library(libmsgpack SHARED IMPORTED)
 add_dependencies(libmsgpack msgpack)
-set_property(TARGET libmsgpack PROPERTY IMPORTED_LOCATION  ${CMAKE_CURRENT_BINARY_DIR}/third_party/msgpack/src/msgpack-build/libmsgpackc.a)
+set_property(TARGET libmsgpack PROPERTY IMPORTED_LOCATION  ${CMAKE_CURRENT_BINARY_DIR}/third_party/msgpack/src/msgpack-build/libmsgpackc.so)
 
 # zeromq dependency
 ExternalProject_Add(zeromq
@@ -84,9 +95,9 @@ ExternalProject_Add(zeromq
 )
 set(ZEROMQ_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/third_party/zeromq/src/zeromq/include)
 include_directories(${ZEROMQ_INCLUDE_DIR})
-add_library(libzmq STATIC IMPORTED)
+add_library(libzmq SHARED IMPORTED)
 add_dependencies(libzmq zeromq)
-set_property(TARGET libzmq PROPERTY IMPORTED_LOCATION  ${CMAKE_CURRENT_BINARY_DIR}/third_party/zeromq/src/zeromq-build/lib/libzmq.a)
+set_property(TARGET libzmq PROPERTY IMPORTED_LOCATION  ${CMAKE_CURRENT_BINARY_DIR}/third_party/zeromq/src/zeromq-build/lib/libzmq.so)
 set(ZEROMQ_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/third_party/zeromq/src/zeromq-build)
 
 # Dependency cppzmq 
@@ -117,16 +128,16 @@ ExternalProject_Add(nats
 )
 set(NATS_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/third_party/nats/src/nats/src)
 include_directories(${NATS_INCLUDE_DIR})
-add_library(libnats STATIC IMPORTED)
+add_library(libnats SHARED IMPORTED)
 add_dependencies(libnats nats)
-set_property(TARGET libnats PROPERTY IMPORTED_LOCATION  ${CMAKE_CURRENT_BINARY_DIR}/third_party/nats/src/nats-build/src/libnats_static.a)
+set_property(TARGET libnats PROPERTY IMPORTED_LOCATION  ${CMAKE_CURRENT_BINARY_DIR}/third_party/nats/src/nats-build/src/libnats.so)
 
 # Build autobahn-server
 add_executable(autobahn-server "autobahn/src/autobahn-server.cpp" ${SOURCES})
 add_dependencies(autobahn-server cppzmq boost)
-target_link_libraries(autobahn-server libmsgpack libzmq libnats pthread crypto ssl ${Boost_LIBRARIES})
+target_link_libraries(autobahn-server libmsgpack libzmq libnats pthread crypto ssl libboost_system libboost_filesystem libboost_thread)
 
 # Build autobahn-plugin
 add_library(autobahn-plugin SHARED "autobahn/src/autobahn-plugin.cpp" ${SOURCES})
 add_dependencies(autobahn-plugin cppzmq boost)
-target_link_libraries(autobahn-plugin libmsgpack libzmq pthread crypto ssl ${Boost_LIBRARIES})
+target_link_libraries(autobahn-plugin libmsgpack libzmq pthread crypto ssl libboost_system libboost_filesystem libboost_thread)
