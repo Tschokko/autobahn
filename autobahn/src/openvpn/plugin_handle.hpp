@@ -25,11 +25,11 @@ namespace autobahn::openvpn {
 class plugin_handle {
  public:
   typedef plugin_handle type;
-  typedef plugin<type>::event_result_t event_result_t;
-  typedef plugin<type>::string_map_t string_map_t;
-  typedef plugin<type>::arg_list_t arg_list_t;
+  typedef Plugin<type>::EventResult event_result_t;
+  typedef Plugin<type>::StringMap string_map_t;
+  typedef Plugin<type>::ArgList arg_list_t;
   // typedef plugin<type>::env_map_t env_map_t;
-  using env_map_t = plugin<type>::env_map_t;
+  using env_map_t = Plugin<type>::EnvMap;
   using service_stub_ptr_t = std::unique_ptr<plugin_service_stub>;
 
   plugin_handle();
