@@ -93,7 +93,7 @@ OPENVPN_EXPORT int openvpn_plugin_func_v3(const int version,
   std::error_code ec;
   auto [result, string_map] = PluginImpl::HandleEvent(
       static_cast<plugin_events>(args->type), BuildArgs(args->argv), BuildEnv(args->envp),
-      reinterpret_cast<PluginImpl::Handle *>(args->handle), ec);
+      reinterpret_cast<PluginImpl::HandleType *>(args->handle), ec);
 
   // If we receive an error code, log it and stop processing the event.
   if (ec) {
@@ -118,7 +118,7 @@ OPENVPN_EXPORT int openvpn_plugin_func_v3(const int version,
 OPENVPN_EXPORT void openvpn_plugin_close_v1(openvpn_plugin_handle_t handle) {
   // Cast the given handle, execute the handle close (clean up) method and
   // delete the handle to free the allocated memory.
-  auto h = reinterpret_cast<PluginImpl::Handle *>(handle);
+  auto h = reinterpret_cast<PluginImpl::HandleType *>(handle);
   std::error_code ec;
   PluginImpl::Close(h, ec);
   if (ec) {

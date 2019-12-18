@@ -20,7 +20,7 @@ template <class H>
 class Plugin {
  public:
   typedef std::vector<plugin_events> EventList;
-  typedef H Handle;
+  typedef H HandleType;
   typedef std::unique_ptr<H> HandlePtr;
   typedef std::tuple<EventList, HandlePtr> OpenResult;
   typedef std::vector<std::string> ArgList;
@@ -45,7 +45,7 @@ class Plugin {
   }
 
   // close is called when the OpenVPN process is about to stop
-  static void Close(Handle *const &handle, std::error_code &ec) { handle->tear_down(ec); }
+  static void Close(HandleType *const &handle, std::error_code &ec) { handle->tear_down(ec); }
 
   // handle_event is called when an OpenVPN event occurs. If we receive an
   // unregistered event (see method open) we raise an exception. If we receive
@@ -54,7 +54,7 @@ class Plugin {
   // events are handled by this routine. If an error occurs during processing
   // the event, it will be only logged to stdout.
   static EventResult HandleEvent(plugin_events event, ArgList &&args, EnvMap &&env,
-                                 Handle *const &handle, std::error_code &ec) {
+                                 HandleType *const &handle, std::error_code &ec) {
     switch (event) {
       case plugin_events::up: {
         throw std::logic_error("received unregistered plugin event UP");
