@@ -17,35 +17,35 @@
 namespace autobahn::openvpn {
 
 template <class H>
-class Plugin {
+class plugin {
  public:
-  typedef std::vector<plugin_events> EventList;
-  typedef H HandleType;
-  typedef std::unique_ptr<H> HandlePtr;
-  typedef std::tuple<EventList, HandlePtr> OpenResult;
-  typedef std::vector<std::string> ArgList;
-  typedef std::map<std::string, std::string> EnvMap;
-  typedef std::map<std::string, std::string> StringMap;
-  typedef std::tuple<plugin_results, StringMap> EventResult;
+  typedef std::vector<plugin_events> event_list_t;
+  typedef H handle_t;
+  typedef std::unique_ptr<H> handle_ptr_t;
+  typedef std::tuple<event_list_t, handle_ptr_t> open_result_t;
+  typedef std::vector<std::string> arg_list_t;
+  typedef std::map<std::string, std::string> env_map_t;
+  typedef std::map<std::string, std::string> string_map_t;
+  typedef std::tuple<plugin_results, string_map_t> event_result_t;
 
   // open is call when the plugin is started by the OpenVPN process
-  // std::tuple<EventList, std::unique_ptr<H>>
-  static OpenResult Open(ArgList &&args, EnvMap &&env, std::error_code &ec) {
+  // std::tuple<event_list_t, std::unique_ptr<H>>
+  static open_result_t open(arg_list_t &&args, env_map_t &&env, std::error_code &ec) {
     // Define the OpenVPN events we want to listen for
-    auto events = EventList{plugin_events::client_disconnect, plugin_events::learn_address,
-                            plugin_events::client_connect_v2};
+    auto events = event_list_t{plugin_events::client_disconnect, plugin_events::learn_address,
+                               plugin_events::client_connect_v2};
 
     // Create a new plugin handle pointer and initialize it. If an error code is
     // set, the plugin fails to start and the OpenVPN process will stop
     // immediately.
-    auto handle = MakeHandlePtr();
-    handle->Init(std::move(env), ec);
+    auto handle = make_handle_ptr();
+    handle->init(std::move(env), ec);
 
-    return MakeOpenResult(std::move(events), std::move(handle));
+    return make_open_result(std::move(events), std::move(handle));
   }
 
   // close is called when the OpenVPN process is about to stop
-  static void Close(HandleType *const &handle, std::error_code &ec) { handle->TearDown(ec); }
+  static void close(handle_t *const &handle, std::error_code &ec) { handle->tear_down(ec); }
 
   // handle_event is called when an OpenVPN event occurs. If we receive an
   // unregistered event (see method open) we raise an exception. If we receive
@@ -53,8 +53,8 @@ class Plugin {
   // fails and the OpenVPN process will terminate. Only properly registered
   // events are handled by this routine. If an error occurs during processing
   // the event, it will be only logged to stdout.
-  static EventResult HandleEvent(plugin_events event, ArgList &&args, EnvMap &&env,
-                                 HandleType *const &handle, std::error_code &ec) {
+  static event_result_t handle_event(plugin_events event, arg_list_t &&args, env_map_t &&env,
+                                     handle_t *const &handle, std::error_code &ec) {
     switch (event) {
       case plugin_events::up: {
         throw std::logic_error("received unregistered plugin event UP");
@@ -78,13 +78,13 @@ class Plugin {
         throw std::logic_error("received unregistered plugin event CLIENT_CONNECT");
       }
       case plugin_events::client_disconnect: {
-        return handle->HandleClientDisconnect(std::move(args), std::move(env), ec);
+        return handle->handle_client_disconnect(std::move(args), std::move(env), ec);
       }
       case plugin_events::learn_address: {
-        return handle->HandleLearnAddress(std::move(args), std::move(env), ec);
+        return handle->handle_learn_address(std::move(args), std::move(env), ec);
       }
       case plugin_events::client_connect_v2: {
-        return handle->HandleClientConnect(std::move(args), std::move(env), ec);
+        return handle->handle_client_connect(std::move(args), std::move(env), ec);
       }
       case plugin_events::tls_final: {
         throw std::logic_error("received unregistered plugin event TLS_FINAL");
@@ -105,10 +105,10 @@ class Plugin {
   }
 
  private:
-  static OpenResult MakeOpenResult(EventList event_list, HandlePtr ptr) {
+  static open_result_t make_open_result(event_list_t event_list, handle_ptr_t ptr) {
     return std::make_tuple<>(std::move(event_list), std::move(ptr));
   }
-  static HandlePtr MakeHandlePtr() { return std::make_unique<H>(); }
+  static handle_ptr_t make_handle_ptr() { return std::make_unique<H>(); }
 };
 
 }  // namespace autobahn::openvpn

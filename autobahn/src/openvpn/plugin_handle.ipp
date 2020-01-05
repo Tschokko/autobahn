@@ -10,19 +10,19 @@
 
 namespace autobahn::openvpn {
 
-using EventResult = PluginHandle::EventResult;
-using ArgList = PluginHandle::ArgList;
-using EnvMap = PluginHandle::EnvMap;
+using event_result_t = plugin_handle::event_result_t;
+using arg_list_t = plugin_handle::arg_list_t;
+using env_map_t = plugin_handle::env_map_t;
 
-inline PluginHandle::PluginHandle() {
+inline plugin_handle::plugin_handle() {
   std::cout << "[autobahn-plugin] plugin_handle ctor called" << std::endl;
 }
 
-inline PluginHandle::~PluginHandle() {
+inline plugin_handle::~plugin_handle() {
   std::cout << "[autobahn-plugin] plugin_handle dtor called" << std::endl;
 }
 
-inline void PluginHandle::Init(EnvMap &&env, std::error_code &ec) {
+inline void plugin_handle::init(env_map_t &&env, std::error_code &ec) {
   std::cout << "[autobahn-plugin] plugin_handle init called" << std::endl;
 
   context_ = std::make_shared<zmq::context_t>(1);
@@ -40,7 +40,7 @@ inline void PluginHandle::Init(EnvMap &&env, std::error_code &ec) {
   listening_thread_ = std::thread([&] { transport_->listen(); });
 }
 
-inline void PluginHandle::TearDown(std::error_code &ec) {
+inline void plugin_handle::tear_down(std::error_code &ec) {
   std::cout << "[autobahn-plugin] plugin_handle tear_down called" << std::endl;
   // ec = autobahn::make_error_code(autobahn::error_codes::plugin_controller_gone);
   transport_->shutdown(10);
@@ -49,8 +49,8 @@ inline void PluginHandle::TearDown(std::error_code &ec) {
 
 // client_connect is called by the plugin to handle the OpenVPN client connect
 // event
-inline EventResult PluginHandle::HandleClientConnect(ArgList &&args, EnvMap &&env,
-                                                     std::error_code &ec) const {
+inline event_result_t plugin_handle::handle_client_connect(arg_list_t &&args, env_map_t &&env,
+                                                           std::error_code &ec) const {
   /*values["config"] = "ifconfig-push 100.127.0.100 255.255.252.0\nifconfig-ipv6-push "
                      "2a03:4000:6:11cd:bbbb::1100/112";
   */
@@ -59,32 +59,33 @@ inline EventResult PluginHandle::HandleClientConnect(ArgList &&args, EnvMap &&en
 
   // If we have an error or the service rejected the client connect request, we return a failure.
   if (ec || !std::get<0>(result)) {
-    return MakeEventResult(plugin_results::failure);
+    return make_event_result(plugin_results::failure);
   }
 
   // Pouplate our string map with the given config.
-  StringMap values;
+  string_map_t values;
   values["config"] = std::get<1>(result);
 
-  return MakeEventResult(plugin_results::success, std::move(values));
+  return make_event_result(plugin_results::success, std::move(values));
 }
 
 // client_disconnect is called by the plugin to handle the OpenVPN client
 // disconnect event
-inline EventResult PluginHandle::HandleClientDisconnect(ArgList &&args, EnvMap &&env,
-                                                        std::error_code &ec) const {
-  return MakeEventResult(plugin_results::success);
+inline event_result_t plugin_handle::handle_client_disconnect(arg_list_t &&args, env_map_t &&env,
+                                                              std::error_code &ec) const {
+  return make_event_result(plugin_results::success);
 }
 
 // learn_address is called by the plugin to handle the OpenVPN learn address
 // event
-inline EventResult PluginHandle::HandleLearnAddress(ArgList &&args, EnvMap &&env,
-                                                    std::error_code &ec) const {
-  return MakeEventResult(plugin_results::success);
+inline event_result_t plugin_handle::handle_learn_address(arg_list_t &&args, env_map_t &&env,
+                                                          std::error_code &ec) const {
+  return make_event_result(plugin_results::success);
 }
 
-// Utility method to create a proper EventResult value
-inline EventResult PluginHandle::MakeEventResult(plugin_results result, StringMap &&string_map) {
+// Utility method to create a proper event_result_t value
+inline event_result_t plugin_handle::make_event_result(plugin_results result,
+                                                       string_map_t &&string_map) {
   return std::make_tuple<>(result, std::move(string_map));
 }
 

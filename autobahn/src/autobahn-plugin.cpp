@@ -19,16 +19,13 @@
 
 using autobahn::openvpn::plugin_events;
 
-// typedef plugin<plugin_handle> plugin;
-// class plugin : public autobahn::openvpn::plugin<autobahn::openvpn::plugin_handle> {
-// };
-using PluginImpl = autobahn::openvpn::Plugin<autobahn::openvpn::PluginHandle>;
-using ArgList = PluginImpl::ArgList;
-using EnvMap = PluginImpl::EnvMap;
+using plugin_impl = autobahn::openvpn::plugin<autobahn::openvpn::plugin_handle>;
+using arg_list_t = plugin_impl::arg_list_t;
+using env_map_t = plugin_impl::env_map_t;
 
 // Convert the OpenVPN plugin argv items to a C++ vector.
-inline static ArgList BuildArgs(const char *argv[]) {
-  ArgList args;
+inline static arg_list_t i_build_args(const char *argv[]) {
+  arg_list_t args;
   for (int i = 0; argv[i] != NULL; i++) {
     std::string arg{argv[i]};
     args.push_back(std::move(arg));
@@ -37,8 +34,8 @@ inline static ArgList BuildArgs(const char *argv[]) {
 }
 
 // Convert the OpenVPN plugin envp items to a C++ map.
-inline static EnvMap BuildEnv(const char *envp[]) {
-  EnvMap env;
+inline static env_map_t i_build_env(const char *envp[]) {
+  env_map_t env;
   if (envp) {
     for (int i = 0; envp[i] != NULL; i++) {
       std::string s{envp[i]};
@@ -66,7 +63,7 @@ OPENVPN_EXPORT int openvpn_plugin_open_v3(const int v3structver,
   // Run the plugin open method, to initialize the plugin handle and receive the
   // list of events we're interessted in.
   std::error_code ec;
-  auto [events, handle] = PluginImpl::Open(BuildArgs(args->argv), BuildEnv(args->envp), ec);
+  auto [events, handle] = plugin_impl::open(i_build_args(args->argv), i_build_env(args->envp), ec);
 
   // If we receive an error code, log it to stdout and return a OpenVPN plugin
   // error. This stops our OpenVPN process, too.
@@ -91,9 +88,9 @@ OPENVPN_EXPORT int openvpn_plugin_func_v3(const int version,
                                           struct openvpn_plugin_args_func_return *retptr) {
   // Call the plugin handle_event method to process the current event.
   std::error_code ec;
-  auto [result, string_map] = PluginImpl::HandleEvent(
-      static_cast<plugin_events>(args->type), BuildArgs(args->argv), BuildEnv(args->envp),
-      reinterpret_cast<PluginImpl::HandleType *>(args->handle), ec);
+  auto [result, string_map] = plugin_impl::handle_event(
+      static_cast<plugin_events>(args->type), i_build_args(args->argv), i_build_env(args->envp),
+      reinterpret_cast<plugin_impl::handle_t *>(args->handle), ec);
 
   // If we receive an error code, log it and stop processing the event.
   if (ec) {
@@ -118,9 +115,9 @@ OPENVPN_EXPORT int openvpn_plugin_func_v3(const int version,
 OPENVPN_EXPORT void openvpn_plugin_close_v1(openvpn_plugin_handle_t handle) {
   // Cast the given handle, execute the handle close (clean up) method and
   // delete the handle to free the allocated memory.
-  auto h = reinterpret_cast<PluginImpl::HandleType *>(handle);
+  auto h = reinterpret_cast<plugin_impl::handle_t *>(handle);
   std::error_code ec;
-  PluginImpl::Close(h, ec);
+  plugin_impl::close(h, ec);
   if (ec) {
     std::cout << "[autobahn-plugin] failure during close: " << ec.message() << std::endl;
   }
