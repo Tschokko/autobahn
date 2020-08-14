@@ -73,7 +73,8 @@ class zmq_transport : public transport,
               << ", subject=" << message.subject() << std::endl;
 
     zmq::multipart_t msg;
-    msg.addstr(encode_message_type_to_string(message.message_type()));
+    // msg.addstr(encode_message_type_to_string(message.message_type()));
+    msg.addtyp<message_types>(message.message_type());
     msg.addstr(message.subject());
     msg.addstr(message.data());
 
@@ -109,7 +110,8 @@ class zmq_transport : public transport,
           zmq::multipart_t msg;
           msg.recv(socket_);
 
-          auto message_type = decode_message_type_string(msg.popstr());
+          // auto message_type = decode_message_type_string(msg.popstr());
+          auto message_type = msg.poptyp<message_types>();
           auto subject = msg.popstr();
           auto data = msg.popstr();
 
@@ -165,7 +167,7 @@ class zmq_transport : public transport,
   zmq::socket_t shutdown_socket_;
   std::promise<bool> shutdown_;
 
-  static std::string encode_message_type_to_string(message_types v) {
+  /*static std::string encode_message_type_to_string(message_types v) {
     switch (v) {
       case message_types::request:
         return "REQ";
@@ -188,7 +190,7 @@ class zmq_transport : public transport,
 
     throw std::runtime_error(
         "decode message type string failed: invalid message type");
-  }
+  }*/
 };
 
 }  // namespace autobahn

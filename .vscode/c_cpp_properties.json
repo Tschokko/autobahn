@@ -4,10 +4,10 @@
       "name": "Linux",
       "includePath": [
         "${workspaceFolder}/autobahn/src",
-        "${workspaceFolder}/autobahn/include",
+        "${workspaceFolder}/bazel-autobahn/external/**",
         "/usr/include/openvpn",
+        "${workspaceFolder}/autobahn/include",
         "/usr/src/googletest/googletest/include",
-        "${workspaceFolder}/",
         "${workspaceFolder}/third_party/boost/boost_1_68_0",
         "${workspaceFolder}/third_party/zeromq/zeromq-4.3.2/include",
         "${workspaceFolder}/third_party/zeromq/cppzmq-4.5.0",

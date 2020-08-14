@@ -73,7 +73,7 @@ autobahn::openvpn::config get_openvpn_config() {
   config conf;
   conf.set_port(9443);
   conf.set_protocol(protocols::tcp_server);
-  conf.set_device("tun");
+  conf.set_device("tun0");
   conf.set_topology(topologies::subnet);
   conf.set_server_ipv4(make_network_v4("100.127.0.0/22"));
   conf.set_server_ipv6(make_network_v6("2a03:4000:6:11cd:bbbb::/112"));
@@ -88,14 +88,14 @@ autobahn::openvpn::config get_openvpn_config() {
 
   conf.set_compression(compressions::lzo);
 
-  conf.set_certificate_authority_file("./ssl/root-ca.crt");
+  conf.set_certificate_authority_file("/workspaces/autobahn/ssl/root-ca.crt");
   // c.Set("crl-verify", ca.GetCRLPath())
-  conf.set_certificate_file("./ssl/server1.crt");
-  conf.set_private_key_file("./ssl/server1.key");
-  conf.set_diffie_hellman_file("./ssl/dh2048.pem");
+  conf.set_certificate_file("/workspaces/autobahn/ssl/server1.crt");
+  conf.set_private_key_file("/workspaces/autobahn/ssl/server1.key");
+  conf.set_diffie_hellman_file("/workspaces/autobahn/ssl/dh2048.pem");
 
   conf.enable_tls_server();
-  conf.set_tls_authentication_file("./ssl/ta.key", 0);
+  conf.set_tls_authentication_file("/workspaces/autobahn/ssl/ta.key", 0);
   conf.set_minimum_tls_version("1.2");
   conf.set_tls_cipher(
       "TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256:TLS-ECDHE-ECDSA-WITH-AES-128-GCM-"
@@ -103,7 +103,7 @@ autobahn::openvpn::config get_openvpn_config() {
       "CBC-SHA256");
 
   conf.set_value("setenv", "AUTOBAHN_SERVER_ADDRESS ipc:///tmp/autobahn");
-  conf.set_value("plugin", "./bazel-bin/autobahn/autobahn-plugin.so");
+  conf.set_value("plugin", "/workspaces/autobahn/bazel-bin/autobahn/autobahn-plugin.so");
 
   return conf;
 }

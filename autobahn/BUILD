@@ -99,6 +99,7 @@ cc_binary(
     ],
     deps = [
         "//autobahn",
+        "//autobahn:autobahn-plugin.so",
         # "@boost//:asio",
     ],
 )

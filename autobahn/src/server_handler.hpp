@@ -81,9 +81,9 @@ class server_handler : public autobahn::transport_handler,
     send_message(std::move(reply_msg));
 
     // Notify observers that a new client has connected successfully
-    if (valid) {
+    /*if (valid) {
       broker_->publish_client_connect(request.common_name());
-    }
+    }*/
   }
 
   void process_learn_address_request(autobahn::message&& message) {
@@ -97,9 +97,9 @@ class server_handler : public autobahn::transport_handler,
     send_message(std::move(reply_msg));
 
     // Notify observers that we learned an address
-    broker_->publish_learn_address(
+    /*broker_->publish_learn_address(
         learn_address_operation_to_string(request.operation()),
-        request.address(), request.common_name());
+        request.address(), request.common_name());*/
   }
 };
 
